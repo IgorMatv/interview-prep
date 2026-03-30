@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iterator: fail-fast vs fail-safe — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--coral:#f07a5a;--coral-bg:rgba(240,122,90,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--purple);background:var(--purple-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--purple)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-purple{background:var(--purple-bg);color:var(--purple)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem}
+.metric{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.9rem 1rem}
+.metric .val{font-size:20px;font-weight:600;color:var(--text);font-family:var(--font-mono)}.metric .lbl{font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--font-mono)}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin:.75rem 0}
+.compare-col{background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);padding:.75rem 1rem}
+.compare-col h4{font-size:12px;font-weight:500;color:var(--muted);margin-bottom:.5rem;font-family:var(--font-mono)}
+.compare-col.good{border-color:rgba(78,202,139,0.3)}.compare-col.bad{border-color:rgba(240,90,90,0.25)}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Iterator: fail-fast vs fail-safe</h1>
+  <span class="header-tag">Java Collections</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Iterator</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Що таке Iterator</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Fail-fast</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Fail-safe</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Безпечне видалення</div>
+    <div class="sidebar-section">Immutability</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>unmodifiableList vs List.of</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Collections утиліти</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Антипатерни</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-purple">основи</span>
+        <h2>Що таке Iterator</h2>
+        <p>Iterator — патерн для обходу колекції без знання її внутрішньої структури. В Java кожна колекція що реалізує <code>Iterable</code> повертає свій <code>Iterator</code> через <code>iterator()</code>. Саме його використовує <code>for-each</code> під капотом.</p>
+        <div class="code"><span class="kw">interface</span> <span class="cls">Iterator</span>&lt;E&gt; {
+    <span class="kw">boolean</span> hasNext();
+    E next();
+    <span class="kw">default void</span> remove() { <span class="cm">// опціональний</span>
+        <span class="kw">throw new</span> <span class="cls">UnsupportedOperationException</span>();
+    }
+}
+
+<span class="cm">// for-each розкривається в:</span>
+<span class="cls">Iterator</span>&lt;<span class="cls">String</span>&gt; it = list.iterator();
+<span class="kw">while</span> (it.hasNext()) {
+    <span class="cls">String</span> s = it.next();
+}</div>
+      </div>
+      <div class="card">
+        <h3>Дві стратегії при модифікації під час ітерації</h3>
+        <div class="grid2">
+          <div class="metric">
+            <div class="val" style="color:var(--red)">fail-fast</div>
+            <div class="lbl">кидає ConcurrentModificationException одразу</div>
+          </div>
+          <div class="metric">
+            <div class="val" style="color:var(--green)">fail-safe</div>
+            <div class="lbl">працює на snapshot або tolerate changes</div>
+          </div>
+        </div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          Назва "fail-safe" неофіційна — в Javadoc її немає. Офіційні терміни: <strong>weakly consistent</strong> (ConcurrentHashMap) і <strong>snapshot</strong> (CopyOnWriteArrayList).
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: fail-fast -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-red">fail-fast</span>
+        <h2>Fail-fast Iterator</h2>
+        <p>ArrayList, LinkedList, HashMap, HashSet та більшість колекцій з <code>java.util</code>. Зберігають лічильник <code>modCount</code> — скільки разів структура колекції змінювалась. При кожному <code>next()</code> порівнюють з <code>expectedModCount</code>.</p>
+        <div class="code"><span class="cm">// Спрощено: ArrayList.Itr</span>
+<span class="kw">private class</span> <span class="cls">Itr</span> <span class="kw">implements</span> <span class="cls">Iterator</span>&lt;E&gt; {
+    <span class="kw">int</span> expectedModCount = modCount;  <span class="cm">// snapshot при створенні</span>
+
+    <span class="kw">public</span> E next() {
+        <span class="kw">if</span> (modCount != expectedModCount)
+            <span class="kw">throw new</span> <span class="cls">ConcurrentModificationException</span>();
+        <span class="cm">// ... повертає елемент</span>
+    }
+}</div>
+      </div>
+      <div class="card">
+        <h3>Що кидає CME</h3>
+        <div class="code"><span class="cls">List</span>&lt;<span class="cls">String</span>&gt; list = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;(<span class="cls">List</span>.of(<span class="str">"a"</span>, <span class="str">"b"</span>, <span class="str">"c"</span>));
+
+<span class="cm">// ConcurrentModificationException!</span>
+<span class="kw">for</span> (<span class="cls">String</span> s : list) {
+    <span class="kw">if</span> (s.equals(<span class="str">"b"</span>))
+        list.remove(s);    <span class="cm">// модифікуємо список під час ітерації</span>
+}
+
+<span class="cm">// Також CME при паралельній модифікації з іншого потоку</span>
+<span class="cm">// (але не гарантовано — best-effort detection)</span></div>
+        <div class="callout callout-warn">
+          <strong>CME — не thread-safety механізм.</strong> Це best-effort детекція помилки програмування. При реальному concurrent доступі CME може не спрацювати.
+        </div>
+        <hr class="sep">
+        <h3>Колекції з fail-fast iterator</h3>
+        <ul>
+          <li>ArrayList, LinkedList, ArrayDeque</li>
+          <li>HashMap, LinkedHashMap, HashSet, LinkedHashSet</li>
+          <li>TreeMap, TreeSet</li>
+          <li>PriorityQueue</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 2: fail-safe -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-green">fail-safe</span>
+        <h2>Fail-safe / Weakly consistent Iterator</h2>
+        <p>Колекції з <code>java.util.concurrent</code>. Два механізми: <strong>snapshot</strong> (CopyOnWriteArrayList) і <strong>weakly consistent</strong> (ConcurrentHashMap).</p>
+        <div class="code"><span class="cm">// CopyOnWriteArrayList — snapshot підхід</span>
+<span class="cls">CopyOnWriteArrayList</span>&lt;<span class="cls">String</span>&gt; cowList =
+    <span class="kw">new</span> <span class="cls">CopyOnWriteArrayList</span>&lt;&gt;(<span class="cls">List</span>.of(<span class="str">"a"</span>, <span class="str">"b"</span>, <span class="str">"c"</span>));
+
+<span class="kw">for</span> (<span class="cls">String</span> s : cowList) {
+    cowList.add(<span class="str">"d"</span>);   <span class="cm">// ОК — не кидає CME</span>
+    <span class="cm">// але "d" НЕ буде в цій ітерації (snapshot)</span>
+}
+
+<span class="cm">// ConcurrentHashMap — weakly consistent</span>
+<span class="cls">ConcurrentHashMap</span>&lt;<span class="cls">String</span>, <span class="cls">Integer</span>&gt; map = <span class="kw">new</span> <span class="cls">ConcurrentHashMap</span>&lt;&gt;();
+map.put(<span class="str">"a"</span>, <span class="num">1</span>);
+map.put(<span class="str">"b"</span>, <span class="num">2</span>);
+
+<span class="kw">for</span> (<span class="kw">var</span> entry : map.entrySet()) {
+    map.put(<span class="str">"c"</span>, <span class="num">3</span>);  <span class="cm">// може або не може з'явитись в ітерації</span>
+}</div>
+      </div>
+      <div class="card">
+        <h3>Порівняння CopyOnWriteArrayList vs ArrayList</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th></th><th>ArrayList</th><th>CopyOnWriteArrayList</th></tr></thead>
+            <tbody>
+              <tr><td>Iterator при модифікації</td><td class="td-bad">CME</td><td class="td-good">snapshot, без CME</td></tr>
+              <tr><td>read complexity</td><td class="td-good">O(1)</td><td class="td-good">O(1)</td></tr>
+              <tr><td>write complexity</td><td class="td-good">O(1) amort.</td><td class="td-bad">O(n) — копіює масив</td></tr>
+              <tr><td>Memory</td><td class="td-good">нормально</td><td class="td-bad">копія при кожному write</td></tr>
+              <tr><td>Коли використовувати</td><td>general purpose</td><td>read-heavy, рідкі writes</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout-warn">
+          <strong>CopyOnWriteArrayList не підходить</strong> для колекцій що часто змінюються — кожен write копіює весь масив. Типовий use case: списки listeners/handlers.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: safe removal -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-teal">практика</span>
+        <h2>Безпечне видалення під час ітерації</h2>
+        <p>Якщо треба видалити елементи під час обходу звичайного ArrayList — є кілька безпечних способів.</p>
+        <div class="code"><span class="cls">List</span>&lt;<span class="cls">String</span>&gt; list = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;(<span class="cls">List</span>.of(<span class="str">"a"</span>, <span class="str">"bb"</span>, <span class="str">"c"</span>, <span class="str">"dd"</span>));
+
+<span class="cm">// ✓ Спосіб 1: Iterator.remove()</span>
+<span class="cls">Iterator</span>&lt;<span class="cls">String</span>&gt; it = list.iterator();
+<span class="kw">while</span> (it.hasNext()) {
+    <span class="kw">if</span> (it.next().length() > <span class="num">1</span>)
+        it.remove();  <span class="cm">// оновлює expectedModCount</span>
+}
+
+<span class="cm">// ✓ Спосіб 2: removeIf() (Java 8+) — найчистіший</span>
+list.removeIf(s -> s.length() > <span class="num">1</span>);
+
+<span class="cm">// ✓ Спосіб 3: collect в новий список</span>
+list = list.stream()
+           .filter(s -> s.length() == <span class="num">1</span>)
+           .collect(<span class="cls">Collectors</span>.toList());
+
+<span class="cm">// ✓ Спосіб 4: ListIterator для заміни</span>
+<span class="cls">ListIterator</span>&lt;<span class="cls">String</span>&gt; lit = list.listIterator();
+<span class="kw">while</span> (lit.hasNext()) {
+    <span class="kw">if</span> (lit.next().equals(<span class="str">"a"</span>))
+        lit.set(<span class="str">"A"</span>);  <span class="cm">// set — без CME</span>
+}</div>
+        <div class="callout callout-ok">
+          <strong>Рекомендація:</strong> у продакшн коді завжди використовуй <code>removeIf()</code> — це найчитабельніше і найбезпечніше рішення.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: unmodifiable vs List.of -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-blue">immutability</span>
+        <h2>unmodifiableList vs List.of</h2>
+        <p>Обидва повертають "незмінний" список, але по-різному. Це одне з найчастіших питань на співбесіді.</p>
+        <div class="compare">
+          <div class="compare-col">
+            <h4>Collections.unmodifiableList()</h4>
+            <div class="code" style="margin:0;font-size:11.5px"><span class="cls">List</span>&lt;<span class="cls">String</span>&gt; mutable =
+  <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;(<span class="cls">List</span>.of(<span class="str">"a"</span>,<span class="str">"b"</span>));
+
+<span class="cls">List</span>&lt;<span class="cls">String</span>&gt; view =
+  <span class="cls">Collections</span>.unmodifiableList(mutable);
+
+view.add(<span class="str">"c"</span>);  <span class="cm">// UOE ✓</span>
+mutable.add(<span class="str">"c"</span>); <span class="cm">// ОК!</span>
+<span class="cm">// view тепер ["a","b","c"] ← змінився!</span></div>
+          </div>
+          <div class="compare-col good">
+            <h4>List.of() / List.copyOf()</h4>
+            <div class="code" style="margin:0;font-size:11.5px"><span class="cls">List</span>&lt;<span class="cls">String</span>&gt; immutable =
+  <span class="cls">List</span>.of(<span class="str">"a"</span>, <span class="str">"b"</span>);
+
+immutable.add(<span class="str">"c"</span>); <span class="cm">// UOE ✓</span>
+
+<span class="cm">// Жодного способу змінити</span>
+<span class="cm">// Справді immutable</span>
+<span class="cm">// null елементи — NPE</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Повне порівняння</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th></th><th>unmodifiableList</th><th>List.of</th><th>List.copyOf</th></tr></thead>
+            <tbody>
+              <tr><td>Справді immutable</td><td class="td-bad">ні (view)</td><td class="td-good">так</td><td class="td-good">так</td></tr>
+              <tr><td>null елементи</td><td class="td-good">так</td><td class="td-bad">NPE</td><td class="td-bad">NPE</td></tr>
+              <tr><td>Копіює дані</td><td class="td-bad">ні</td><td class="td-bad">ні</td><td class="td-good">так</td></tr>
+              <tr><td>Тип результату</td><td>обгортка</td><td>спеціальний</td><td>спеціальний</td></tr>
+              <tr><td>Java версія</td><td>Java 2+</td><td>Java 9+</td><td>Java 10+</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout-info">
+          <strong>List.copyOf(collection)</strong> — найбезпечніший варіант коли хочеш справді незмінну копію. Робить defensive copy і гарантує що оригінал не може вплинути на результат.
+        </div>
+        <div class="code" style="margin-top:.75rem"><span class="cm">// Типовий патерн: defensive copy в конструкторі</span>
+<span class="kw">class</span> <span class="cls">ImmutableContainer</span> {
+    <span class="kw">private final</span> <span class="cls">List</span>&lt;<span class="cls">String</span>&gt; items;
+
+    <span class="cls">ImmutableContainer</span>(<span class="cls">List</span>&lt;<span class="cls">String</span>&gt; items) {
+        <span class="kw">this</span>.items = <span class="cls">List</span>.copyOf(items); <span class="cm">// копія + immutable</span>
+    }
+
+    <span class="kw">public</span> <span class="cls">List</span>&lt;<span class="cls">String</span>&gt; getItems() {
+        <span class="kw">return</span> items; <span class="cm">// вже immutable, безпечно повертати</span>
+    }
+}</div>
+      </div>
+    </div>
+
+    <!-- 5: Collections utilities -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-blue">Collections API</span>
+        <h2>Корисні Collections утиліти</h2>
+        <div class="code"><span class="cm">// Сортування і пошук</span>
+<span class="cls">Collections</span>.sort(list);                        <span class="cm">// natural order</span>
+<span class="cls">Collections</span>.sort(list, comparator);            <span class="cm">// custom order</span>
+<span class="cls">Collections</span>.binarySearch(sortedList, key);     <span class="cm">// O(log n)</span>
+<span class="cls">Collections</span>.reverse(list);
+<span class="cls">Collections</span>.shuffle(list);
+
+<span class="cm">// Min / Max</span>
+<span class="cls">Collections</span>.min(collection);
+<span class="cls">Collections</span>.max(collection, comparator);
+
+<span class="cm">// Frequency і disjoint</span>
+<span class="cls">Collections</span>.frequency(list, element);          <span class="cm">// скільки разів</span>
+<span class="cls">Collections</span>.disjoint(list1, list2);            <span class="cm">// немає спільних?</span>
+
+<span class="cm">// Заповнення</span>
+<span class="cls">Collections</span>.fill(list, <span class="str">"default"</span>);
+<span class="cls">Collections</span>.nCopies(<span class="num">5</span>, <span class="str">"x"</span>);                  <span class="cm">// [x, x, x, x, x]</span>
+
+<span class="cm">// Singleton і empty (immutable)</span>
+<span class="cls">Collections</span>.singletonList(<span class="str">"only"</span>);
+<span class="cls">Collections</span>.emptyList();                        <span class="cm">// краще List.of()</span>
+
+<span class="cm">// Thread-safe обгортки (краще ConcurrentHashMap)</span>
+<span class="cls">Collections</span>.synchronizedList(list);
+<span class="cls">Collections</span>.synchronizedMap(map);</div>
+        <div class="callout callout-warn">
+          <code>Collections.synchronizedList()</code> синхронізує кожну операцію окремо, але <strong>не ітерацію</strong> — for-each треба синхронізувати вручну. Зазвичай краще використовувати <code>CopyOnWriteArrayList</code> або <code>ConcurrentHashMap</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: Антипатерни -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-red">антипатерни</span>
+        <h2>Типові помилки</h2>
+        <h3>1. Модифікація в for-each</h3>
+        <div class="code"><span class="cm">// ПОГАНО: ConcurrentModificationException</span>
+<span class="kw">for</span> (<span class="cls">String</span> s : list) {
+    <span class="kw">if</span> (condition(s)) list.remove(s);
+}
+
+<span class="cm">// ДОБРЕ</span>
+list.removeIf(s -> condition(s));</div>
+        <hr class="sep">
+        <h3>2. unmodifiableList і мутація оригіналу</h3>
+        <div class="code"><span class="cm">// ПАСТКА: view, не копія</span>
+<span class="kw">var</span> original = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;(<span class="cls">List</span>.of(<span class="str">"a"</span>, <span class="str">"b"</span>));
+<span class="kw">var</span> view = <span class="cls">Collections</span>.unmodifiableList(original);
+original.add(<span class="str">"c"</span>);
+view.size(); <span class="cm">// → 3 ← несподівано!</span>
+
+<span class="cm">// ПРАВИЛЬНО: справжня копія</span>
+<span class="kw">var</span> safe = <span class="cls">List</span>.copyOf(original);</div>
+        <hr class="sep">
+        <h3>3. null в List.of()</h3>
+        <div class="code"><span class="cm">// NPE при створенні!</span>
+<span class="cls">List</span>.of(<span class="str">"a"</span>, <span class="kw">null</span>, <span class="str">"b"</span>);  <span class="cm">// NullPointerException</span>
+
+<span class="cm">// Якщо null можливий — ArrayList або перевірка</span>
+<span class="kw">var</span> list = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();
+list.add(<span class="str">"a"</span>);
+list.add(<span class="kw">null</span>);  <span class="cm">// ОК</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> ключова різниця — <code>unmodifiableList</code> це view (оригінал може змінитись), <code>List.of</code> — справді immutable структура. І CME — це best-effort, не thread-safety гарантія.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

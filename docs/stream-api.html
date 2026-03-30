@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stream API Deep — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--coral:#f07a5a;--coral-bg:rgba(240,122,90,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--green);background:var(--green-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--green)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-purple{background:var(--purple-bg);color:var(--purple)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem}
+.metric{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.9rem 1rem}
+.metric .val{font-size:20px;font-weight:600;color:var(--text);font-family:var(--font-mono)}.metric .lbl{font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--font-mono)}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Stream API Deep</h1>
+  <span class="header-tag">Java 8+</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Основи</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Lazy evaluation</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>map vs flatMap</div>
+    <div class="sidebar-section">Collectors</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>groupingBy</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>toMap і joining</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>downstream collectors</div>
+    <div class="sidebar-section">Просунуто</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>reduce і collect</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>parallel streams</div>
+    <div class="nav-item" onclick="go(7)"><span class="nav-dot"></span>Антипатерни</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0: lazy -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-green">основи</span>
+        <h2>Lazy evaluation — як Stream виконується</h2>
+        <p>Stream операції діляться на <strong>intermediate</strong> (ліниві, повертають Stream) і <strong>terminal</strong> (запускають виконання). Без terminal-операції pipeline не виконується взагалі.</p>
+        <div class="code"><span class="cm">// Intermediate: filter, map, flatMap, sorted, distinct,</span>
+<span class="cm">//               limit, skip, peek, takeWhile, dropWhile</span>
+<span class="cm">// Terminal:     collect, forEach, count, sum, min, max,</span>
+<span class="cm">//               findFirst, findAny, anyMatch, reduce, toList</span>
+
+<span class="cm">// Цей код нічого не виводить — немає terminal!</span>
+<span class="cls">Stream</span>.of(<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>)
+      .filter(n -> { System.out.println(n); <span class="kw">return</span> n > <span class="num">1</span>; });
+
+<span class="cm">// Додаємо terminal — тепер виконується</span>
+<span class="cls">Stream</span>.of(<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>)
+      .filter(n -> n > <span class="num">1</span>)
+      .map(n -> n * <span class="num">10</span>)
+      .forEach(System.out::println); <span class="cm">// 20, 30</span></div>
+      </div>
+      <div class="card">
+        <h3>Short-circuit: виконання зупиняється раніше</h3>
+        <div class="code"><span class="cm">// limit, findFirst, anyMatch — short-circuit</span>
+<span class="cls">Stream</span>.iterate(<span class="num">0</span>, n -> n + <span class="num">1</span>)  <span class="cm">// нескінченний стрім!</span>
+      .filter(n -> n % <span class="num">2</span> == <span class="num">0</span>)
+      .limit(<span class="num">5</span>)                   <span class="cm">// зупиниться після 5</span>
+      .toList();                  <span class="cm">// [0, 2, 4, 6, 8]</span>
+
+<span class="cm">// anyMatch зупиняється при першому true</span>
+<span class="kw">boolean</span> hasEven = list.stream()
+    .anyMatch(n -> n % <span class="num">2</span> == <span class="num">0</span>); <span class="cm">// не обходить всі!</span></div>
+        <div class="callout callout-info">
+          Stream — це pipeline, не структура даних. Після terminal операції стрім <strong>закритий</strong> — його не можна перевикористати. Новий виклик <code>stream()</code> створює новий pipeline.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: flatMap -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-green">трансформація</span>
+        <h2>map vs flatMap</h2>
+        <p><code>map</code> — 1 елемент → 1 елемент. <code>flatMap</code> — 1 елемент → N елементів (flatten вкладених стрімів).</p>
+        <div class="code"><span class="cls">List</span>&lt;<span class="cls">List</span>&lt;<span class="cls">String</span>&gt;&gt; nested = <span class="cls">List</span>.of(
+    <span class="cls">List</span>.of(<span class="str">"a"</span>, <span class="str">"b"</span>),
+    <span class="cls">List</span>.of(<span class="str">"c"</span>, <span class="str">"d"</span>)
+);
+
+<span class="cm">// map → Stream&lt;List&lt;String&gt;&gt; — не те!</span>
+nested.stream()
+      .map(<span class="cls">List</span>::stream)      <span class="cm">// Stream&lt;Stream&lt;String&gt;&gt;</span>
+      .toList();              <span class="cm">// [[a,b], [c,d]]</span>
+
+<span class="cm">// flatMap → Stream&lt;String&gt; — плоский список</span>
+nested.stream()
+      .flatMap(<span class="cls">Collection</span>::stream)  <span class="cm">// Stream&lt;String&gt;</span>
+      .toList();                     <span class="cm">// [a, b, c, d]</span></div>
+      </div>
+      <div class="card">
+        <h3>Реальний приклад: всі теги з постів</h3>
+        <div class="code"><span class="kw">record</span> <span class="cls">Post</span>(<span class="cls">String</span> title, <span class="cls">List</span>&lt;<span class="cls">String</span>&gt; tags) {}
+
+<span class="cls">List</span>&lt;<span class="cls">Post</span>&gt; posts = ...;
+
+<span class="cm">// Всі унікальні теги по всіх постах</span>
+<span class="cls">Set</span>&lt;<span class="cls">String</span>&gt; allTags = posts.stream()
+    .flatMap(post -> post.tags().stream())
+    .collect(<span class="cls">Collectors</span>.toSet());
+
+<span class="cm">// flatMapToInt — для примітивів (без boxing)</span>
+<span class="kw">int</span>[] allLengths = posts.stream()
+    .flatMapToInt(p -> p.tags().stream()
+                         .mapToInt(<span class="cls">String</span>::length))
+    .toArray();</div>
+        <hr class="sep">
+        <h3>mapMulti (Java 16+) — альтернатива flatMap</h3>
+        <div class="code"><span class="cm">// mapMulti — ефективніше ніж flatMap для малих списків</span>
+posts.stream()
+     .&lt;<span class="cls">String</span>&gt;mapMulti((post, consumer) ->
+         post.tags().forEach(consumer))
+     .toList();</div>
+      </div>
+    </div>
+
+    <!-- 2: groupingBy -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">collectors</span>
+        <h2>groupingBy — найпотужніший collector</h2>
+        <p>Групує елементи в <code>Map&lt;K, List&lt;V&gt;&gt;</code>. З downstream collector може агрегувати довільним чином.</p>
+        <div class="code"><span class="kw">record</span> <span class="cls">Employee</span>(<span class="cls">String</span> name, <span class="cls">String</span> dept, <span class="kw">double</span> salary) {}
+<span class="cls">List</span>&lt;<span class="cls">Employee</span>&gt; employees = ...;
+
+<span class="cm">// Базовий: Map&lt;String, List&lt;Employee&gt;&gt;</span>
+<span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">List</span>&lt;<span class="cls">Employee</span>&gt;&gt; byDept =
+    employees.stream()
+             .collect(<span class="cls">Collectors</span>.groupingBy(<span class="cls">Employee</span>::dept));
+
+<span class="cm">// Рахуємо кількість у кожній групі</span>
+<span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Long</span>&gt; countByDept =
+    employees.stream()
+             .collect(<span class="cls">Collectors</span>.groupingBy(
+                 <span class="cls">Employee</span>::dept,
+                 <span class="cls">Collectors</span>.counting()));
+
+<span class="cm">// Середня зарплата по відділах</span>
+<span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Double</span>&gt; avgSalaryByDept =
+    employees.stream()
+             .collect(<span class="cls">Collectors</span>.groupingBy(
+                 <span class="cls">Employee</span>::dept,
+                 <span class="cls">Collectors</span>.averagingDouble(<span class="cls">Employee</span>::salary)));</div>
+      </div>
+      <div class="card">
+        <h3>partitioningBy — спеціальний groupingBy для boolean</h3>
+        <div class="code"><span class="cm">// Ділить на true/false групи</span>
+<span class="cls">Map</span>&lt;<span class="cls">Boolean</span>, <span class="cls">List</span>&lt;<span class="cls">Employee</span>&gt;&gt; seniorVsJunior =
+    employees.stream()
+             .collect(<span class="cls">Collectors</span>.partitioningBy(
+                 e -> e.salary() > <span class="num">5000</span>));
+
+seniorVsJunior.get(<span class="kw">true</span>);   <span class="cm">// seniors</span>
+seniorVsJunior.get(<span class="kw">false</span>);  <span class="cm">// juniors</span>
+
+<span class="cm">// partitioningBy завжди повертає обидва ключі</span>
+<span class="cm">// groupingBy — тільки ті ключі що є в даних</span></div>
+        <div class="callout callout-info">
+          <strong>Порядок ключів у Map:</strong> <code>groupingBy</code> за замовчуванням повертає <code>HashMap</code>. Якщо потрібен порядок — передай <code>TreeMap::new</code> як другий аргумент або використовуй <code>LinkedHashMap::new</code>.
+        </div>
+        <div class="code"><span class="cm">// Sorted map</span>
+<span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">List</span>&lt;<span class="cls">Employee</span>&gt;&gt; sorted =
+    employees.stream()
+             .collect(<span class="cls">Collectors</span>.groupingBy(
+                 <span class="cls">Employee</span>::dept,
+                 <span class="cls">TreeMap</span>::<span class="kw">new</span>,        <span class="cm">// ← map factory</span>
+                 <span class="cls">Collectors</span>.toList()));</div>
+      </div>
+    </div>
+
+    <!-- 3: toMap і joining -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-teal">collectors</span>
+        <h2>toMap і joining</h2>
+        <h3>toMap — ключ/значення з елементів</h3>
+        <div class="code"><span class="kw">record</span> <span class="cls">User</span>(<span class="kw">long</span> id, <span class="cls">String</span> name) {}
+
+<span class="cm">// id → User</span>
+<span class="cls">Map</span>&lt;<span class="cls">Long</span>, <span class="cls">User</span>&gt; byId = users.stream()
+    .collect(<span class="cls">Collectors</span>.toMap(
+        <span class="cls">User</span>::id,      <span class="cm">// keyMapper</span>
+        u -> u));      <span class="cm">// valueMapper</span>
+
+<span class="cm">// id → name</span>
+<span class="cls">Map</span>&lt;<span class="cls">Long</span>, <span class="cls">String</span>&gt; idToName = users.stream()
+    .collect(<span class="cls">Collectors</span>.toMap(<span class="cls">User</span>::id, <span class="cls">User</span>::name));
+
+<span class="cm">// ОБЕРЕЖНО: дублікати ключів → IllegalStateException!</span>
+<span class="cm">// Треба mergeFunction:</span>
+<span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">User</span>&gt; byName = users.stream()
+    .collect(<span class="cls">Collectors</span>.toMap(
+        <span class="cls">User</span>::name,
+        u -> u,
+        (existing, duplicate) -> existing)); <span class="cm">// keep first</span></div>
+      </div>
+      <div class="card">
+        <h3>joining — конкатенація рядків</h3>
+        <div class="code"><span class="cls">List</span>&lt;<span class="cls">String</span>&gt; names = <span class="cls">List</span>.of(<span class="str">"Alice"</span>, <span class="str">"Bob"</span>, <span class="str">"Carol"</span>);
+
+<span class="cm">// Просто joined</span>
+names.stream().collect(<span class="cls">Collectors</span>.joining());
+<span class="cm">// → "AliceBobCarol"</span>
+
+<span class="cm">// З роздільником</span>
+names.stream().collect(<span class="cls">Collectors</span>.joining(<span class="str">", "</span>));
+<span class="cm">// → "Alice, Bob, Carol"</span>
+
+<span class="cm">// З prefix і suffix</span>
+names.stream().collect(<span class="cls">Collectors</span>.joining(<span class="str">", "</span>, <span class="str">"["</span>, <span class="str">"]"</span>));
+<span class="cm">// → "[Alice, Bob, Carol]"</span>
+
+<span class="cm">// Те саме через String.join (простіше)</span>
+<span class="cls">String</span>.join(<span class="str">", "</span>, names); <span class="cm">// → "Alice, Bob, Carol"</span></div>
+        <div class="callout callout-warn">
+          <code>toMap</code> кидає <code>IllegalStateException</code> при дублікаті ключа — завжди передавай <code>mergeFunction</code> якщо дублікати можливі. Це дуже часта помилка в продакшн коді.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: downstream -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-teal">collectors</span>
+        <h2>Downstream collectors — вкладена агрегація</h2>
+        <p>Другий аргумент <code>groupingBy</code> — downstream collector, що застосовується до кожної групи. Дозволяє будь-яку агрегацію всередині груп.</p>
+        <div class="code"><span class="cm">// Всі downstream collectors</span>
+<span class="cls">Collectors</span>.counting()           <span class="cm">// кількість → Long</span>
+<span class="cls">Collectors</span>.summingInt/Long/Double <span class="cm">// сума</span>
+<span class="cls">Collectors</span>.averagingDouble()     <span class="cm">// середнє → Double</span>
+<span class="cls">Collectors</span>.summarizingInt()      <span class="cm">// count+sum+min+max+avg</span>
+<span class="cls">Collectors</span>.minBy(comparator)     <span class="cm">// Optional&lt;T&gt;</span>
+<span class="cls">Collectors</span>.maxBy(comparator)     <span class="cm">// Optional&lt;T&gt;</span>
+<span class="cls">Collectors</span>.joining()             <span class="cm">// для String</span>
+<span class="cls">Collectors</span>.toSet()               <span class="cm">// Set замість List</span>
+<span class="cls">Collectors</span>.mapping(f, downstream) <span class="cm">// трансформація перед</span>
+<span class="cls">Collectors</span>.toUnmodifiableList()  <span class="cm">// immutable результат</span></div>
+      </div>
+      <div class="card">
+        <h3>Складні комбінації</h3>
+        <div class="code"><span class="cm">// Імена співробітників по відділах (не об'єкти)</span>
+<span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">List</span>&lt;<span class="cls">String</span>&gt;&gt; namesByDept =
+    employees.stream()
+             .collect(<span class="cls">Collectors</span>.groupingBy(
+                 <span class="cls">Employee</span>::dept,
+                 <span class="cls">Collectors</span>.mapping(
+                     <span class="cls">Employee</span>::name,   <span class="cm">// трансформація</span>
+                     <span class="cls">Collectors</span>.toList())));
+
+<span class="cm">// Топ зарплата по відділах</span>
+<span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Optional</span>&lt;<span class="cls">Employee</span>&gt;&gt; topPaidByDept =
+    employees.stream()
+             .collect(<span class="cls">Collectors</span>.groupingBy(
+                 <span class="cls">Employee</span>::dept,
+                 <span class="cls">Collectors</span>.maxBy(
+                     <span class="cls">Comparator</span>.comparingDouble(<span class="cls">Employee</span>::salary))));
+
+<span class="cm">// Вкладений groupingBy</span>
+<span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Long</span>&gt;&gt; countByDeptAndLevel =
+    employees.stream()
+             .collect(<span class="cls">Collectors</span>.groupingBy(
+                 <span class="cls">Employee</span>::dept,
+                 <span class="cls">Collectors</span>.groupingBy(
+                     <span class="cls">Employee</span>::level,
+                     <span class="cls">Collectors</span>.counting())));</div>
+      </div>
+    </div>
+
+    <!-- 5: reduce -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-green">агрегація</span>
+        <h2>reduce і collect</h2>
+        <h3>reduce — fold операція</h3>
+        <div class="code"><span class="cm">// reduce(identity, accumulator)</span>
+<span class="kw">int</span> sum = <span class="cls">Stream</span>.of(<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>)
+              .reduce(<span class="num">0</span>, Integer::sum);  <span class="cm">// → 10</span>
+
+<span class="cm">// reduce без identity → Optional (стрім може бути порожнім)</span>
+<span class="cls">Optional</span>&lt;<span class="cls">String</span>&gt; longest = names.stream()
+    .reduce((a, b) -> a.length() >= b.length() ? a : b);
+
+<span class="cm">// reduce(identity, accumulator, combiner) — для parallel</span>
+<span class="kw">int</span> parallelSum = numbers.parallelStream()
+    .reduce(<span class="num">0</span>, Integer::sum, Integer::sum);</div>
+      </div>
+      <div class="card">
+        <h3>collect vs reduce — коли що</h3>
+        <div class="code"><span class="cm">// reduce — immutable results, не змінює контейнер</span>
+<span class="kw">int</span> total = list.stream().reduce(<span class="num">0</span>, Integer::sum);
+
+<span class="cm">// collect — mutable reduction, ефективніше для складних агрегацій</span>
+<span class="cm">// Ніколи не роби так (неефективно + не паралелізується):</span>
+<span class="cls">List</span>&lt;<span class="cls">String</span>&gt; bad = stream.reduce(
+    <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;(),
+    (list, e) -> { list.add(e); <span class="kw">return</span> list; },   <span class="cm">// мутуємо!</span>
+    (l1, l2) -> { l1.addAll(l2); <span class="kw">return</span> l1; });
+
+<span class="cm">// Правильно — collect:</span>
+<span class="cls">List</span>&lt;<span class="cls">String</span>&gt; good = stream.collect(<span class="cls">Collectors</span>.toList());</div>
+        <hr class="sep">
+        <h3>Примітивні стріми — без boxing</h3>
+        <div class="code"><span class="cm">// IntStream, LongStream, DoubleStream</span>
+<span class="kw">int</span> sum      = <span class="cls">IntStream</span>.rangeClosed(<span class="num">1</span>, <span class="num">100</span>).sum();
+<span class="kw">double</span> avg   = <span class="cls">IntStream</span>.of(<span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>).average().orElse(<span class="num">0</span>);
+<span class="cls">IntSummaryStatistics</span> stats = list.stream()
+    .mapToInt(<span class="cls">String</span>::length)
+    .summaryStatistics();  <span class="cm">// count, sum, min, max, avg</span></div>
+      </div>
+    </div>
+
+    <!-- 6: parallel -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-amber">parallel</span>
+        <h2>Parallel streams</h2>
+        <p>Parallel stream розбиває дані на частини і обробляє у ForkJoinPool.commonPool(). Не завжди швидше — overhead на split/merge і координацію потоків.</p>
+        <div class="code"><span class="cm">// Увімкнути parallel</span>
+list.parallelStream()...
+stream.parallel()...
+
+<span class="cm">// Вимкнути всередині pipeline</span>
+stream.parallel().filter(...).sequential().forEach(...);</div>
+      </div>
+      <div class="card">
+        <h3>Коли parallel допомагає, а коли шкодить</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Умова</th><th>Parallel</th></tr></thead>
+            <tbody>
+              <tr><td>Великий обсяг даних (100k+)</td><td class="td-good">допомагає</td></tr>
+              <tr><td>CPU-intensive операції</td><td class="td-good">допомагає</td></tr>
+              <tr><td>Малі колекції (&lt; 10k)</td><td class="td-bad">overhead перебільшує</td></tr>
+              <tr><td>IO-bound операції</td><td class="td-bad">ForkJoinPool не для цього</td></tr>
+              <tr><td>Stateful операції (sorted)</td><td class="td-bad">втрата переваги</td></tr>
+              <tr><td>forEach з side effects</td><td class="td-bad">race condition</td></tr>
+              <tr><td>ArrayList (splittable)</td><td class="td-good">добре розбивається</td></tr>
+              <tr><td>LinkedList (не splittable)</td><td class="td-bad">погано розбивається</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code" style="margin-top:.75rem"><span class="cm">// НЕБЕЗПЕЧНО: stateful lambda в parallel</span>
+<span class="cls">List</span>&lt;<span class="cls">Integer</span>&gt; result = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();
+list.parallelStream()
+    .filter(n -> n > <span class="num">0</span>)
+    .forEach(result::add);  <span class="cm">// race condition на ArrayList!</span>
+
+<span class="cm">// ПРАВИЛЬНО: collect thread-safe</span>
+<span class="cls">List</span>&lt;<span class="cls">Integer</span>&gt; safe = list.parallelStream()
+    .filter(n -> n > <span class="num">0</span>)
+    .collect(<span class="cls">Collectors</span>.toList()); <span class="cm">// thread-safe ✓</span></div>
+        <div class="callout callout-warn">
+          Parallel stream використовує <code>ForkJoinPool.commonPool()</code> — спільний для всього застосунку. Заблокувати його IO операцією = заблокувати інші частини програми.
+        </div>
+      </div>
+    </div>
+
+    <!-- 7: антипатерни -->
+    <div class="screen" id="s7">
+      <div class="card">
+        <span class="tag tag-red">антипатерни</span>
+        <h2>Типові помилки</h2>
+        <h3>1. Стрім використаний двічі</h3>
+        <div class="code"><span class="cls">Stream</span>&lt;<span class="cls">String</span>&gt; stream = list.stream().filter(s -> s.length() > <span class="num">3</span>);
+stream.forEach(System.out::println);
+stream.count();  <span class="cm">// IllegalStateException: stream already operated upon</span>
+
+<span class="cm">// Рішення: використай Supplier&lt;Stream&gt;</span>
+<span class="cls">Supplier</span>&lt;<span class="cls">Stream</span>&lt;<span class="cls">String</span>&gt;&gt; ss = () -> list.stream().filter(s -> s.length() > <span class="num">3</span>);
+ss.get().forEach(System.out::println);
+ss.get().count();</div>
+        <hr class="sep">
+        <h3>2. toMap без merge function при дублікатах</h3>
+        <div class="code"><span class="cm">// IllegalStateException: Duplicate key</span>
+users.stream().collect(<span class="cls">Collectors</span>.toMap(<span class="cls">User</span>::name, u -> u));
+
+<span class="cm">// Якщо дублікати можливі — завжди передавай merge</span>
+users.stream().collect(<span class="cls">Collectors</span>.toMap(
+    <span class="cls">User</span>::name, u -> u, (a, b) -> a));</div>
+        <hr class="sep">
+        <h3>3. forEach замість map/collect</h3>
+        <div class="code"><span class="cm">// ПОГАНО: side-effect forEach для трансформації</span>
+<span class="cls">List</span>&lt;<span class="cls">String</span>&gt; result = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();
+list.stream().forEach(s -> result.add(s.toUpperCase()));
+
+<span class="cm">// ДОБРЕ: декларативно</span>
+<span class="cls">List</span>&lt;<span class="cls">String</span>&gt; result = list.stream()
+    .map(<span class="cls">String</span>::toUpperCase)
+    .collect(<span class="cls">Collectors</span>.toList());</div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> groupingBy + downstream — найчастіше питання. Обов'язково знай різницю map/flatMap, toMap з merge function, і чому parallel не завжди швидше.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

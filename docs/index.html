@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java Senior Prep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;
+  --blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);
+  --green:#4eca8b;--green-bg:rgba(78,202,139,0.1);
+  --amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);
+  --red:#f05a5a;--red-bg:rgba(240,90,90,0.1);
+  --purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);
+  --teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);
+  --coral:#f07a5a;--coral-bg:rgba(240,122,90,0.1);
+  --pink:#e879a0;--pink-bg:rgba(232,121,160,0.1);
+  --font-body:'Syne',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+  --radius:10px;--radius-sm:6px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh}
+
+.hero{padding:3.5rem 3rem 2rem;max-width:1100px;margin:0 auto}
+.hero-label{font-size:11px;font-family:var(--font-mono);color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.6rem}
+.hero h1{font-size:32px;font-weight:700;line-height:1.2;margin-bottom:.6rem}
+.hero p{font-size:14px;color:var(--muted);line-height:1.7;max-width:560px}
+.hero-stats{display:flex;gap:1.5rem;margin-top:1.25rem;flex-wrap:wrap}
+.stat{font-size:12px;font-family:var(--font-mono);color:var(--hint)}
+.stat span{color:var(--muted)}
+
+.main{max-width:1100px;margin:0 auto;padding:0 3rem 4rem}
+
+.section{margin-bottom:2.5rem}
+.section-header{display:flex;align-items:baseline;gap:.75rem;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.section-title{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.section-week{font-size:11px;font-family:var(--font-mono);color:var(--hint)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.6rem}
+
+.card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1rem 1.1rem;text-decoration:none;color:inherit;display:block;
+  transition:border-color .12s,background .12s;position:relative;overflow:hidden;
+}
+.card:not(.wip):hover{border-color:var(--border2);background:var(--bg3)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent,var(--blue));opacity:0;transition:opacity .12s}
+.card:not(.wip):hover::before{opacity:1}
+
+.card.wip{opacity:.45;cursor:default}
+.card.wip::after{content:'скоро';position:absolute;top:.75rem;right:.9rem;font-size:10px;font-family:var(--font-mono);color:var(--hint)}
+
+.card-tag{display:inline-flex;align-items:center;font-size:10px;font-family:var(--font-mono);padding:1px 7px;border-radius:20px;margin-bottom:.5rem;font-weight:500}
+.card h3{font-size:13.5px;font-weight:600;margin-bottom:.2rem;line-height:1.35;padding-right:2rem}
+.card p{font-size:12px;color:var(--muted);line-height:1.55;margin-top:.25rem}
+.card-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:.6rem}
+.chip{font-size:10px;font-family:var(--font-mono);color:var(--hint);background:var(--bg3);border:1px solid var(--border);padding:1px 6px;border-radius:3px}
+
+/* tag colors */
+.t-blue{background:var(--blue-bg);color:var(--blue)}
+.t-green{background:var(--green-bg);color:var(--green)}
+.t-amber{background:var(--amber-bg);color:var(--amber)}
+.t-red{background:var(--red-bg);color:var(--red)}
+.t-purple{background:var(--purple-bg);color:var(--purple)}
+.t-teal{background:var(--teal-bg);color:var(--teal)}
+.t-coral{background:var(--coral-bg);color:var(--coral)}
+.t-pink{background:var(--pink-bg);color:var(--pink)}
+
+.footer{border-top:1px solid var(--border);padding:1.25rem 3rem;max-width:1100px;margin:0 auto;font-size:11px;color:var(--hint);font-family:var(--font-mono);display:flex;justify-content:space-between;align-items:center}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-label">Java Senior · 3 місяці</div>
+  <h1>Interview Prep</h1>
+  <p>Інтерактивні шпаргалки з кодом, схемами і нюансами. Теми з роадмапу — кожна окремою сторінкою.</p>
+  <div class="hero-stats">
+    <div class="stat">готово <span id="done-count">0</span></div>
+    <div class="stat">всього <span id="total-count">0</span></div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ══════════════════════════════════════════
+       МІСЯЦЬ 1 · ТИЖДЕНЬ 1 — Java Collections
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Java Collections</span>
+      <span class="section-week">місяць 1 · тиждень 1</span>
+    </div>
+    <div class="grid">
+
+      <a href="hashmap-deep.html" class="card" style="--accent:var(--blue)">
+        <div class="card-tag t-blue">Collections</div>
+        <h3>HashMap Deep Dive</h3>
+        <p>bucket, hash(), treeify, resize. LinkedHashMap, TreeMap.</p>
+        <div class="card-chips"><span class="chip">bucket</span><span class="chip">treeify</span><span class="chip">resize</span><span class="chip">LRU</span><span class="chip">TreeMap</span></div>
+      </a>
+
+      <a href="equals-hashcode.html" class="card" style="--accent:var(--coral)">
+        <div class="card-tag t-coral">Core Java</div>
+        <h3>equals / hashCode контракт</h3>
+        <p>5 правил equals, 3 правила hashCode, mutable keys, спадкування.</p>
+        <div class="card-chips"><span class="chip">contract</span><span class="chip">mutable key</span><span class="chip">inheritance</span></div>
+      </a>
+
+      <a href="generics.html" class="card" style="--accent:var(--teal)">
+        <div class="card-tag t-teal">Generics</div>
+        <h3>Generics: PECS, Type Erasure</h3>
+        <p>? extends, ? super, PECS мнемоніка, erasure і що воно ламає.</p>
+        <div class="card-chips"><span class="chip">PECS</span><span class="chip">wildcard</span><span class="chip">erasure</span></div>
+      </a>
+
+      <a href="iterator-failfast.html" class="card" style="--accent:var(--purple)">
+        <div class="card-tag t-purple">Collections</div>
+        <h3>Iterator: fail-fast vs fail-safe</h3>
+        <p>Collections.unmodifiableList vs List.of, CopyOnWrite.</p>
+        <div class="card-chips"><span class="chip">fail-fast</span><span class="chip">CME</span><span class="chip">unmodifiable</span></div>
+      </a>
+
+      <a href="stream-api.html" class="card" style="--accent:var(--green)">
+        <div class="card-tag t-green">Stream API</div>
+        <h3>Stream API Deep</h3>
+        <p>collectors: groupingBy, toMap, flatMap, parallel streams.</p>
+        <div class="card-chips"><span class="chip">groupingBy</span><span class="chip">flatMap</span><span class="chip">parallel</span></div>
+      </a>
+
+      <div class="card wip" style="--accent:var(--amber)">
+        <div class="card-tag t-amber">Java 21</div>
+        <h3>Optional антипатерни</h3>
+        <p>як поле, в колекціях, get() без перевірки, orElse vs orElseGet.</p>
+        <div class="card-chips"><span class="chip">orElseGet</span><span class="chip">field</span><span class="chip">collection</span></div>
+      </div>
+
+      <a href="pattern-matching.html" class="card" style="--accent:var(--purple)">
+        <div class="card-tag t-purple">Java 21</div>
+        <h3>Java 21: Records, Sealed, Pattern Matching</h3>
+        <p>instanceof → switch, guarded patterns, record deconstruction, exhaustiveness.</p>
+        <div class="card-chips"><span class="chip">records</span><span class="chip">sealed</span><span class="chip">switch</span><span class="chip">when</span></div>
+      </a>
+
+      <a href="exception-handling.html" class="card" style="--accent:var(--red)">
+        <div class="card-tag t-red">Exceptions</div>
+        <h3>Exception handling</h3>
+        <p>checked vs unchecked, try-with-resources, антипатерни.</p>
+        <div class="card-chips"><span class="chip">checked</span><span class="chip">TWR</span><span class="chip">hierarchy</span></div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       МІСЯЦЬ 1 · ТИЖДЕНЬ 2 — Concurrency
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Concurrency</span>
+      <span class="section-week">місяць 1 · тиждень 2</span>
+    </div>
+    <div class="grid">
+
+      <div class="card wip" style="--accent:var(--red)">
+        <div class="card-tag t-red">Concurrency</div>
+        <h3>Thread lifecycle, volatile, happens-before</h3>
+        <p>Стани потоку, JMM, happens-before правила, visibility.</p>
+        <div class="card-chips"><span class="chip">volatile</span><span class="chip">JMM</span><span class="chip">happens-before</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--red)">
+        <div class="card-tag t-red">Concurrency</div>
+        <h3>synchronized, Java Memory Model, deadlock</h3>
+        <p>monitor, intrinsic lock, deadlock умови і prevention.</p>
+        <div class="card-chips"><span class="chip">monitor</span><span class="chip">deadlock</span><span class="chip">livelock</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--red)">
+        <div class="card-tag t-red">Concurrency</div>
+        <h3>ReentrantLock, StampedLock, AtomicInteger, CAS</h3>
+        <p>явні локи, compare-and-swap, lock-free структури.</p>
+        <div class="card-chips"><span class="chip">ReentrantLock</span><span class="chip">CAS</span><span class="chip">Atomic</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--red)">
+        <div class="card-tag t-red">Concurrency</div>
+        <h3>ExecutorService, ThreadPoolExecutor</h3>
+        <p>параметри пулу, rejection policies, Executors factory.</p>
+        <div class="card-chips"><span class="chip">corePool</span><span class="chip">maxPool</span><span class="chip">queue</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--red)">
+        <div class="card-tag t-red">Concurrency</div>
+        <h3>CompletableFuture</h3>
+        <p>chaining, thenApply/thenCompose, exception handling, allOf.</p>
+        <div class="card-chips"><span class="chip">thenCompose</span><span class="chip">exceptionally</span><span class="chip">allOf</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--red)">
+        <div class="card-tag t-red">Concurrency</div>
+        <h3>ConcurrentHashMap, Virtual Threads</h3>
+        <p>сегментація, CAS ops. Project Loom, Virtual Threads Java 21.</p>
+        <div class="card-chips"><span class="chip">ConcurrentHashMap</span><span class="chip">Loom</span><span class="chip">VT</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       МІСЯЦЬ 1 · ТИЖДЕНЬ 3 — JVM
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">JVM Internals</span>
+      <span class="section-week">місяць 1 · тиждень 3</span>
+    </div>
+    <div class="grid">
+
+      <div class="card wip" style="--accent:var(--amber)">
+        <div class="card-tag t-amber">JVM</div>
+        <h3>JVM memory model</h3>
+        <p>heap, stack, metaspace, off-heap. Розподіл об'єктів.</p>
+        <div class="card-chips"><span class="chip">heap</span><span class="chip">stack</span><span class="chip">metaspace</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--amber)">
+        <div class="card-tag t-amber">JVM</div>
+        <h3>GC: G1 deep, ZGC basics</h3>
+        <p>G1 regions, mixed GC, humongous objects. ZGC паузи.</p>
+        <div class="card-chips"><span class="chip">G1</span><span class="chip">ZGC</span><span class="chip">regions</span><span class="chip">STW</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--amber)">
+        <div class="card-tag t-amber">JVM</div>
+        <h3>Class loading, JIT, escape analysis</h3>
+        <p>classloader hierarchy, JIT тири, scalar replacement.</p>
+        <div class="card-chips"><span class="chip">classloader</span><span class="chip">JIT</span><span class="chip">escape</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--amber)">
+        <div class="card-tag t-amber">JVM</div>
+        <h3>Memory leaks: причини і profiling</h3>
+        <p>типові причини, strong/weak/soft references, VisualVM, JFR.</p>
+        <div class="card-chips"><span class="chip">WeakRef</span><span class="chip">VisualVM</span><span class="chip">JFR</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--amber)">
+        <div class="card-tag t-amber">Java</div>
+        <h3>Reflection, Annotations</h3>
+        <p>як Spring використовує reflection, custom annotations, retention.</p>
+        <div class="card-chips"><span class="chip">reflection</span><span class="chip">annotation</span><span class="chip">retention</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--amber)">
+        <div class="card-tag t-amber">Design</div>
+        <h3>Design Patterns: Strategy, Builder, Proxy</h3>
+        <p>GoF патерни з прикладами з реального Java/Spring коду.</p>
+        <div class="card-chips"><span class="chip">Strategy</span><span class="chip">Builder</span><span class="chip">Proxy</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--amber)">
+        <div class="card-tag t-amber">Design</div>
+        <h3>SOLID</h3>
+        <p>5 принципів з Java прикладами, типові порушення.</p>
+        <div class="card-chips"><span class="chip">SRP</span><span class="chip">OCP</span><span class="chip">LSP</span><span class="chip">ISP</span><span class="chip">DIP</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       МІСЯЦЬ 1 · ТИЖДЕНЬ 4 — Spring Core
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Spring Core</span>
+      <span class="section-week">місяць 1 · тиждень 4</span>
+    </div>
+    <div class="grid">
+
+      <div class="card wip" style="--accent:var(--green)">
+        <div class="card-tag t-green">Spring</div>
+        <h3>Spring IoC: BeanFactory, lifecycle, BeanPostProcessor</h3>
+        <p>ApplicationContext vs BeanFactory, bean lifecycle hooks.</p>
+        <div class="card-chips"><span class="chip">IoC</span><span class="chip">BPP</span><span class="chip">lifecycle</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--green)">
+        <div class="card-tag t-green">Spring</div>
+        <h3>Bean scopes, @Conditional, @Profile</h3>
+        <p>prototype в singleton pitfall, умовна конфігурація.</p>
+        <div class="card-chips"><span class="chip">prototype</span><span class="chip">singleton</span><span class="chip">@Profile</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--green)">
+        <div class="card-tag t-green">Spring</div>
+        <h3>Spring AOP: JDK vs CGLIB, self-invocation</h3>
+        <p>proxy механізм, @Around, self-invocation пастка.</p>
+        <div class="card-chips"><span class="chip">CGLIB</span><span class="chip">proxy</span><span class="chip">@Around</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--green)">
+        <div class="card-tag t-green">Spring</div>
+        <h3>@Transactional deep</h3>
+        <p>propagation, rollback rules, readOnly, self-invocation.</p>
+        <div class="card-chips"><span class="chip">REQUIRED</span><span class="chip">REQUIRES_NEW</span><span class="chip">rollback</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--green)">
+        <div class="card-tag t-green">Spring</div>
+        <h3>Spring Boot autoconfiguration</h3>
+        <p>@SpringBootApplication internals, AutoConfiguration, conditions.</p>
+        <div class="card-chips"><span class="chip">autoconfigure</span><span class="chip">@Conditional</span><span class="chip">SPI</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--green)">
+        <div class="card-tag t-green">Spring</div>
+        <h3>Serialization: Jackson deep</h3>
+        <p>custom serializers, @JsonView, ObjectMapper конфігурація.</p>
+        <div class="card-chips"><span class="chip">@JsonView</span><span class="chip">deserializer</span><span class="chip">mixin</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       МІСЯЦЬ 2 · ТИЖДЕНЬ 5 — Hibernate + Redis
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Hibernate + Redis</span>
+      <span class="section-week">місяць 2 · тиждень 5</span>
+    </div>
+    <div class="grid">
+
+      <div class="card wip" style="--accent:var(--purple)">
+        <div class="card-tag t-purple">Hibernate</div>
+        <h3>Entity lifecycle, persistence context, dirty checking</h3>
+        <p>стани entity, session, dirty checking механізм.</p>
+        <div class="card-chips"><span class="chip">transient</span><span class="chip">managed</span><span class="chip">detached</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--purple)">
+        <div class="card-tag t-purple">Hibernate</div>
+        <h3>LAZY vs EAGER, @EntityGraph, JOIN FETCH</h3>
+        <p>N+1 проблема і 3 способи вирішення.</p>
+        <div class="card-chips"><span class="chip">N+1</span><span class="chip">@EntityGraph</span><span class="chip">@BatchSize</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--purple)">
+        <div class="card-tag t-purple">Hibernate</div>
+        <h3>@Version, CascadeType, orphanRemoval</h3>
+        <p>optimistic locking, cascade стратегії, orphan видалення.</p>
+        <div class="card-chips"><span class="chip">optimistic</span><span class="chip">cascade</span><span class="chip">orphan</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--purple)">
+        <div class="card-tag t-purple">Hibernate</div>
+        <h3>L1/L2 кеш Hibernate, Spring Data Specifications</h3>
+        <p>рівні кешу, Ehcache, динамічні запити через Specification.</p>
+        <div class="card-chips"><span class="chip">L1 cache</span><span class="chip">L2 cache</span><span class="chip">Specification</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--purple)">
+        <div class="card-tag t-purple">DB</div>
+        <h3>Liquibase міграції</h3>
+        <p>changeset, zero-downtime patterns, rollback стратегії.</p>
+        <div class="card-chips"><span class="chip">changeset</span><span class="chip">zero-downtime</span><span class="chip">rollback</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       МІСЯЦЬ 2 · ТИЖДЕНЬ 6 — SQL + Kafka
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">SQL + Kafka</span>
+      <span class="section-week">місяць 2 · тиждень 6</span>
+    </div>
+    <div class="grid">
+
+      <div class="card wip" style="--accent:var(--blue)">
+        <div class="card-tag t-blue">SQL</div>
+        <h3>B-tree index, composite index, left-prefix rule</h3>
+        <p>як індекси працюють, EXPLAIN ANALYZE, покриваючі індекси.</p>
+        <div class="card-chips"><span class="chip">B-tree</span><span class="chip">composite</span><span class="chip">EXPLAIN</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--blue)">
+        <div class="card-tag t-blue">SQL</div>
+        <h3>Window functions, CTE, MVCC</h3>
+        <p>ROW_NUMBER, RANK, WITH, multi-version concurrency control.</p>
+        <div class="card-chips"><span class="chip">ROW_NUMBER</span><span class="chip">CTE</span><span class="chip">MVCC</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--blue)">
+        <div class="card-tag t-blue">SQL</div>
+        <h3>Isolation levels, deadlock, SELECT FOR UPDATE</h3>
+        <p>4 рівні ізоляції, phantom read, pessimistic locking.</p>
+        <div class="card-chips"><span class="chip">READ COMMITTED</span><span class="chip">SERIALIZABLE</span><span class="chip">phantom</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--blue)">
+        <div class="card-tag t-blue">SQL</div>
+        <h3>HikariCP tuning, connection pool sizing</h3>
+        <p>параметри пулу, формула розміру, моніторинг.</p>
+        <div class="card-chips"><span class="chip">HikariCP</span><span class="chip">pool size</span><span class="chip">timeout</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--teal)">
+        <div class="card-tag t-teal">Kafka</div>
+        <h3>Kafka: partitions, consumer groups, exactly-once</h3>
+        <p>offset, rebalancing, delivery guarantees, idempotent producer.</p>
+        <div class="card-chips"><span class="chip">partition</span><span class="chip">offset</span><span class="chip">exactly-once</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       МІСЯЦЬ 2 · ТИЖДЕНЬ 7-8 — Testing + System Design
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Testing + System Design</span>
+      <span class="section-week">місяць 2 · тиждень 7–8</span>
+    </div>
+    <div class="grid">
+
+      <div class="card wip" style="--accent:var(--coral)">
+        <div class="card-tag t-coral">Testing</div>
+        <h3>Spring Testing: @SpringBootTest, @WebMvcTest, Testcontainers</h3>
+        <p>шари тестів, @DataJpaTest, @MockBean, Testcontainers setup.</p>
+        <div class="card-chips"><span class="chip">@WebMvcTest</span><span class="chip">@DataJpaTest</span><span class="chip">Testcontainers</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--pink)">
+        <div class="card-tag t-pink">System Design</div>
+        <h3>System Design: CAP, back-of-envelope, latency</h3>
+        <p>CAP теорема, числа які треба знати, оцінка масштабу.</p>
+        <div class="card-chips"><span class="chip">CAP</span><span class="chip">latency</span><span class="chip">throughput</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--pink)">
+        <div class="card-tag t-pink">System Design</div>
+        <h3>System Design: load balancer, rate limiting, CDN</h3>
+        <p>алгоритми LB, token bucket, leaky bucket, edge caching.</p>
+        <div class="card-chips"><span class="chip">round-robin</span><span class="chip">token bucket</span><span class="chip">CDN</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--pink)">
+        <div class="card-tag t-pink">System Design</div>
+        <h3>Мікросервіси: Saga, Outbox, Circuit Breaker</h3>
+        <p>розподілені транзакції, transactional outbox, Resilience4j.</p>
+        <div class="card-chips"><span class="chip">Saga</span><span class="chip">Outbox</span><span class="chip">Circuit Breaker</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--pink)">
+        <div class="card-tag t-pink">System Design</div>
+        <h3>Database per service, CQRS, Event Sourcing</h3>
+        <p>патерни розподілених даних, command vs query, event store.</p>
+        <div class="card-chips"><span class="chip">CQRS</span><span class="chip">Event Sourcing</span><span class="chip">read model</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--pink)">
+        <div class="card-tag t-pink">System Design</div>
+        <h3>REST vs gRPC vs GraphQL, idempotency</h3>
+        <p>порівняння протоколів, idempotency keys, versioning.</p>
+        <div class="card-chips"><span class="chip">REST</span><span class="chip">gRPC</span><span class="chip">GraphQL</span><span class="chip">idempotent</span></div>
+      </div>
+
+      <div class="card wip" style="--accent:var(--pink)">
+        <div class="card-tag t-pink">System Design</div>
+        <h3>Observability: metrics, traces, structured logging</h3>
+        <p>Micrometer, OpenTelemetry, correlation ID, log levels.</p>
+        <div class="card-chips"><span class="chip">Micrometer</span><span class="chip">trace</span><span class="chip">structured log</span></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <span>java-interview-prep</span>
+  <span id="progress-text"></span>
+</div>
+
+<script>
+const cards = document.querySelectorAll('.card');
+const done  = document.querySelectorAll('.card:not(.wip)');
+document.getElementById('done-count').textContent  = done.length;
+document.getElementById('total-count').textContent = cards.length;
+document.getElementById('progress-text').textContent =
+  done.length + ' / ' + cards.length + ' тем готово';
+</script>
+</body>
+</html>
