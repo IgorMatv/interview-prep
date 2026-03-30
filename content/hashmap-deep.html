@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HashMap Deep Dive — Java 21</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f11;
+  --bg2: #16181c;
+  --bg3: #1e2026;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #e8e9ec;
+  --muted: #7a7d87;
+  --hint: #4a4d57;
+  --blue: #5b9cf6;
+  --blue-bg: rgba(91,156,246,0.1);
+  --green: #4eca8b;
+  --green-bg: rgba(78,202,139,0.1);
+  --amber: #f0a843;
+  --amber-bg: rgba(240,168,67,0.1);
+  --red: #f05a5a;
+  --red-bg: rgba(240,90,90,0.1);
+  --purple: #a78bf6;
+  --purple-bg: rgba(167,139,246,0.1);
+  --teal: #3ecfcf;
+  --teal-bg: rgba(62,207,207,0.1);
+  --font-body: 'Syne', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* HEADER */
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+.header-back {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: color .15s;
+}
+.header-back:hover { color: var(--text); }
+.header-divider { color: var(--hint); font-size: 13px; }
+.header h1 { font-size: 15px; font-weight: 500; }
+.header-tag {
+  margin-left: auto;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+/* LAYOUT */
+.layout {
+  display: flex;
+  min-height: calc(100vh - 61px);
+}
+
+/* SIDEBAR NAV */
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  padding: 1.5rem 0;
+  position: sticky;
+  top: 61px;
+  height: calc(100vh - 61px);
+  overflow-y: auto;
+}
+.sidebar-section {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--hint);
+  padding: 0 1.25rem .5rem;
+  margin-top: .5rem;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: .55rem 1.25rem;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all .12s;
+  user-select: none;
+}
+.nav-item:hover { color: var(--text); background: var(--bg2); }
+.nav-item.active { color: var(--text); border-left-color: var(--blue); background: var(--blue-bg); }
+.nav-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--hint);
+  flex-shrink: 0;
+  transition: background .12s;
+}
+.nav-item.active .nav-dot { background: var(--blue); }
+
+/* CONTENT */
+.content {
+  flex: 1;
+  padding: 2rem 2.5rem;
+  max-width: 760px;
+}
+.screen { display: none; }
+.screen.on { display: block; }
+
+/* CARDS */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+.card + .card { }
+
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  padding: 2px 9px;
+  border-radius: 20px;
+  margin-bottom: .6rem;
+  font-weight: 500;
+}
+.tag-blue   { background: var(--blue-bg);   color: var(--blue); }
+.tag-amber  { background: var(--amber-bg);  color: var(--amber); }
+.tag-red    { background: var(--red-bg);    color: var(--red); }
+.tag-green  { background: var(--green-bg);  color: var(--green); }
+.tag-gray   { background: var(--bg3);       color: var(--muted); }
+.tag-purple { background: var(--purple-bg); color: var(--purple); }
+
+h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: .5rem;
+  color: var(--text);
+}
+h3 {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: .4rem;
+}
+p, li {
+  font-size: 13.5px;
+  color: #9ea3b0;
+  line-height: 1.7;
+}
+ul { padding-left: 1.1rem; margin-top: .3rem; }
+li { margin-bottom: .25rem; }
+strong { color: var(--text); font-weight: 500; }
+code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--bg3);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--teal);
+}
+
+.sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: .9rem 0;
+}
+
+/* CODE BLOCKS */
+.code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: #111318;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.25rem;
+  margin: .75rem 0;
+  line-height: 1.8;
+  white-space: pre;
+  overflow-x: auto;
+  color: #c9cdd8;
+}
+.kw  { color: #7eb8f7; }
+.cm  { color: #4e5466; font-style: italic; }
+.str { color: #7dcf8e; }
+.num { color: #f0a843; }
+.cls { color: #e8b86d; }
+
+/* GRID */
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+  margin-top: .75rem;
+}
+.metric {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: .9rem 1rem;
+}
+.metric .val {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: var(--font-mono);
+}
+.metric .lbl {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+  font-family: var(--font-mono);
+}
+
+/* CALLOUTS */
+.callout {
+  border-radius: var(--radius-sm);
+  padding: .7rem 1rem;
+  margin-top: .75rem;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.callout-warn { background: var(--amber-bg); border-left: 3px solid var(--amber); color: #c8904a; }
+.callout-ok   { background: var(--green-bg); border-left: 3px solid var(--green);  color: #4ab87a; }
+.callout-info { background: var(--blue-bg);  border-left: 3px solid var(--blue);   color: #5b9cf6; }
+.callout strong { color: inherit; }
+
+/* TABLE */
+.table-wrap { overflow-x: auto; margin-top: .75rem; }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th {
+  text-align: left;
+  padding: 7px 10px;
+  color: var(--muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  color: #9ea3b0;
+  font-size: 12.5px;
+}
+tr:last-child td { border-bottom: none; }
+.td-good { color: var(--green); }
+.td-bad  { color: var(--red); }
+.td-warn { color: var(--amber); }
+.td-head { color: var(--text); font-weight: 500; }
+
+/* SVG SECTION */
+.diagram { margin: .75rem 0; }
+
+/* PROGRESS BAR */
+.progress {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 1.5rem;
+}
+.progress-dot {
+  height: 3px;
+  flex: 1;
+  border-radius: 2px;
+  background: var(--bg3);
+  transition: background .2s;
+}
+.progress-dot.done { background: var(--blue); }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>HashMap Deep Dive</h1>
+  <span class="header-tag">Java 21</span>
+</header>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Структура</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>HashMap internals</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>hash() + bucket</div>
+    <div class="sidebar-section">Оптимізація</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Treeify</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Resize / rehash</div>
+    <div class="sidebar-section">Варіанти</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>LinkedHashMap</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>TreeMap</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Порівняння</div>
+  </nav>
+
+  <main class="content">
+
+    <!-- 0: HashMap internals -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-blue">структура</span>
+        <h2>HashMap — що всередині</h2>
+        <p>Це масив (<code>Node[] table</code>) де кожен елемент — голова ланцюжка або корінь червоно-чорного дерева.</p>
+        <div class="code"><span class="kw">// Спрощено: HashMap&lt;K,V&gt;</span>
+<span class="kw">transient</span> <span class="cls">Node</span>&lt;K,V&gt;[] table;     <span class="cm">// масив бакетів</span>
+<span class="kw">int</span> size;                          <span class="cm">// кількість пар</span>
+<span class="kw">int</span> threshold;                     <span class="cm">// size > threshold → resize</span>
+<span class="kw">float</span> loadFactor = <span class="num">0.75f</span>;         <span class="cm">// за замовчуванням</span>
+
+<span class="kw">static class</span> <span class="cls">Node</span>&lt;K,V&gt; {
+    <span class="kw">final int</span> hash;
+    <span class="kw">final</span> K key;
+    V value;
+    <span class="cls">Node</span>&lt;K,V&gt; next;                <span class="cm">// linked list</span>
+}</div>
+      </div>
+      <div class="card">
+        <h3>Початкові константи</h3>
+        <div class="grid2">
+          <div class="metric"><div class="val">16</div><div class="lbl">DEFAULT_INITIAL_CAPACITY</div></div>
+          <div class="metric"><div class="val">0.75</div><div class="lbl">DEFAULT_LOAD_FACTOR</div></div>
+          <div class="metric"><div class="val">8</div><div class="lbl">TREEIFY_THRESHOLD</div></div>
+          <div class="metric"><div class="val">6</div><div class="lbl">UNTREEIFY_THRESHOLD</div></div>
+        </div>
+        <hr class="sep">
+        <p><code>threshold = capacity × loadFactor</code> — при 16 бакетах і 0.75 це <strong>12</strong>. Щойно додається 13-й елемент — масив подвоюється до 32.</p>
+        <div class="callout callout-info">
+          <strong>Чому 0.75?</strong> Математичний компроміс між пам'яттю та швидкістю. При 1.0 — мало resize, але багато колізій. При 0.5 — мало колізій, але вдвічі більше пам'яті. 0.75 ≈ ln(2) — оптимальна точка для random hashing.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: hash + bucket -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-blue">алгоритм</span>
+        <h2>hash() і вибір бакету</h2>
+        <p>Java не використовує <code>hashCode()</code> напряму — робить <strong>perturbation</strong>: XOR старших 16 біт з молодшими. Це зменшує колізії коли capacity маленька.</p>
+        <div class="code"><span class="cm">// Реальний код HashMap.hash()</span>
+<span class="kw">static final int</span> hash(<span class="cls">Object</span> key) {
+    <span class="kw">int</span> h;
+    <span class="kw">return</span> (key == <span class="kw">null</span>) ? <span class="num">0</span> :
+        (h = key.hashCode()) ^ (h &gt;&gt;&gt; <span class="num">16</span>);
+}
+
+<span class="cm">// Індекс бакету (n = table.length, завжди 2^k)</span>
+<span class="kw">int</span> index = (n - <span class="num">1</span>) &amp; hash;   <span class="cm">// бітова маска ≡ hash % n</span></div>
+        <div class="callout callout-info">
+          <strong>Чому capacity завжди 2^k?</strong> Щоб замість повільного <code>hash % n</code> використовувати бітовий <code>(n-1) & hash</code>. Це працює виключно при n = 2^k.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Що відбувається при колізії</h3>
+        <p>Якщо два ключі потрапляють в один бакет — новий вузол додається в <strong>хвіст</strong> ланцюжка (Java 8+, раніше в голову). Пошук: O(1) в середньому, O(n) worst case.</p>
+        <hr class="sep">
+
+        <svg class="diagram" width="100%" viewBox="0 0 620 190">
+          <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#4a4d57" stroke-width="1.5" stroke-linecap="round"/></marker></defs>
+          <!-- buckets -->
+          <rect x="20" y="20" width="70" height="28" rx="5" fill="#16181c" stroke="#3ecfcf" stroke-width="0.8"/>
+          <text x="55" y="38" text-anchor="middle" font-size="12" fill="#3ecfcf" font-family="'JetBrains Mono',monospace">[0]</text>
+          <rect x="20" y="56" width="70" height="28" rx="5" fill="#16181c" stroke="#a78bf6" stroke-width="0.8"/>
+          <text x="55" y="74" text-anchor="middle" font-size="12" fill="#a78bf6" font-family="'JetBrains Mono',monospace">[1]</text>
+          <rect x="20" y="92" width="70" height="28" rx="5" fill="#16181c" stroke="#4a4d57" stroke-width="0.8"/>
+          <text x="55" y="110" text-anchor="middle" font-size="12" fill="#7a7d87" font-family="'JetBrains Mono',monospace">[2]</text>
+          <rect x="20" y="128" width="70" height="28" rx="5" fill="#16181c" stroke="#a78bf6" stroke-width="0.8"/>
+          <text x="55" y="146" text-anchor="middle" font-size="12" fill="#a78bf6" font-family="'JetBrains Mono',monospace">[3]</text>
+          <!-- nodes bucket 1 (collision) -->
+          <rect x="115" y="56" width="78" height="28" rx="5" fill="#1e1a2e" stroke="#a78bf6" stroke-width="0.8"/>
+          <text x="154" y="74" text-anchor="middle" font-size="11.5" fill="#c9cdd8" font-family="'JetBrains Mono',monospace">"cat"</text>
+          <line x1="90" y1="70" x2="113" y2="70" stroke="#4a4d57" stroke-width="0.8" marker-end="url(#a)"/>
+          <rect x="215" y="56" width="78" height="28" rx="5" fill="#1e1a2e" stroke="#a78bf6" stroke-width="0.8"/>
+          <text x="254" y="74" text-anchor="middle" font-size="11.5" fill="#c9cdd8" font-family="'JetBrains Mono',monospace">"dog"</text>
+          <line x1="193" y1="70" x2="213" y2="70" stroke="#4a4d57" stroke-width="0.8" marker-end="url(#a)"/>
+          <text x="307" y="74" font-size="11" fill="#4a4d57" font-family="'JetBrains Mono',monospace">null</text>
+          <!-- bucket 3 -->
+          <rect x="115" y="128" width="78" height="28" rx="5" fill="#1e1a2e" stroke="#a78bf6" stroke-width="0.8"/>
+          <text x="154" y="146" text-anchor="middle" font-size="11.5" fill="#c9cdd8" font-family="'JetBrains Mono',monospace">"fox"</text>
+          <line x1="90" y1="142" x2="113" y2="142" stroke="#4a4d57" stroke-width="0.8" marker-end="url(#a)"/>
+          <text x="207" y="146" font-size="11" fill="#4a4d57" font-family="'JetBrains Mono',monospace">null</text>
+          <!-- labels -->
+          <text x="55" y="175" text-anchor="middle" font-size="11" fill="#4a4d57" font-family="'Syne',sans-serif">table[]</text>
+          <text x="230" y="175" text-anchor="middle" font-size="11" fill="#4a4d57" font-family="'Syne',sans-serif">колізія → linked list</text>
+        </svg>
+
+        <div class="callout callout-warn">
+          Якщо перевизначити <code>hashCode()</code> так, що всі об'єкти повертають одне значення — HashMap деградує до O(n) linked list.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: Treeify -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-amber">оптимізація</span>
+        <h2>Treeify — коли список стає деревом</h2>
+        <p>Якщо в одному бакеті <strong>8+ вузлів</strong> і загальна capacity <strong>≥ 64</strong> — linked list перетворюється на <code>TreeNode</code> (червоно-чорне дерево). O(n) → O(log n).</p>
+        <div class="code"><span class="cm">// Константи HashMap</span>
+<span class="kw">static final int</span> TREEIFY_THRESHOLD    = <span class="num">8</span>;
+<span class="kw">static final int</span> UNTREEIFY_THRESHOLD  = <span class="num">6</span>;
+<span class="kw">static final int</span> MIN_TREEIFY_CAPACITY = <span class="num">64</span>;
+
+<span class="cm">// Після кожного put у переповнений бакет:</span>
+<span class="kw">if</span> (binCount &gt;= TREEIFY_THRESHOLD - <span class="num">1</span>)
+    treeifyBin(tab, hash);
+<span class="cm">// але якщо table.length &lt; 64 → resize замість treeify</span></div>
+      </div>
+      <div class="card">
+        <h3>Нюанс: MIN_TREEIFY_CAPACITY = 64</h3>
+        <p>Якщо capacity &lt; 64 і бакет переповнений — HashMap спочатку зробить <strong>resize</strong>, а не treeify. При малій таблиці краще перехешувати.</p>
+        <hr class="sep">
+        <h3>Гістерезис 8 / 6</h3>
+        <p>При видаленні: якщо вузлів ≤ 6 — дерево стає списком знову. Різниця між 6 і 8 запобігає безперервним конверсіям при почерговому add/remove.</p>
+
+        <svg class="diagram" width="100%" viewBox="0 0 620 190">
+          <defs><marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#4a4d57" stroke-width="1.5" stroke-linecap="round"/></marker></defs>
+          <!-- list -->
+          <text x="95" y="18" text-anchor="middle" font-size="12" fill="#7a7d87" font-family="'Syne',sans-serif">list (8 nodes)</text>
+          <rect x="14" y="28" width="38" height="24" rx="4" fill="#201a0e" stroke="#f0a843" stroke-width="0.8"/>
+          <text x="33" y="44" text-anchor="middle" font-size="11" fill="#c9cdd8" font-family="'JetBrains Mono',monospace">A</text>
+          <rect x="60" y="28" width="38" height="24" rx="4" fill="#201a0e" stroke="#f0a843" stroke-width="0.8"/>
+          <text x="79" y="44" text-anchor="middle" font-size="11" fill="#c9cdd8" font-family="'JetBrains Mono',monospace">B</text>
+          <rect x="106" y="28" width="38" height="24" rx="4" fill="#201a0e" stroke="#f0a843" stroke-width="0.8"/>
+          <text x="125" y="44" text-anchor="middle" font-size="11" fill="#c9cdd8" font-family="'JetBrains Mono',monospace">C</text>
+          <line x1="52" y1="40" x2="58" y2="40" stroke="#4a4d57" stroke-width="0.8" marker-end="url(#a2)"/>
+          <line x1="98" y1="40" x2="104" y2="40" stroke="#4a4d57" stroke-width="0.8" marker-end="url(#a2)"/>
+          <text x="152" y="44" font-size="11" fill="#4a4d57" font-family="'JetBrains Mono',monospace">...</text>
+          <text x="95" y="70" text-anchor="middle" font-size="11" fill="#f0a843" font-family="'Syne',sans-serif">O(n)</text>
+          <!-- arrow -->
+          <text x="215" y="42" text-anchor="middle" font-size="20" fill="#4a4d57">→</text>
+          <text x="215" y="60" text-anchor="middle" font-size="10" fill="#4a4d57" font-family="'Syne',sans-serif">treeify</text>
+          <!-- tree -->
+          <text x="435" y="18" text-anchor="middle" font-size="12" fill="#7a7d87" font-family="'Syne',sans-serif">red-black tree</text>
+          <rect x="408" y="28" width="52" height="24" rx="4" fill="#0e1a18" stroke="#4eca8b" stroke-width="0.8"/>
+          <text x="434" y="44" text-anchor="middle" font-size="11" fill="#c9cdd8" font-family="'JetBrains Mono',monospace">root D</text>
+          <rect x="340" y="68" width="48" height="24" rx="4" fill="#1a0e0e" stroke="#f05a5a" stroke-width="0.8"/>
+          <text x="364" y="84" text-anchor="middle" font-size="11" fill="#c9cdd8" font-family="'JetBrains Mono',monospace">B</text>
+          <rect x="482" y="68" width="48" height="24" rx="4" fill="#1a0e0e" stroke="#f05a5a" stroke-width="0.8"/>
+          <text x="506" y="84" text-anchor="middle" font-size="11" fill="#c9cdd8" font-family="'JetBrains Mono',monospace">F</text>
+          <rect x="308" y="110" width="44" height="24" rx="4" fill="#0e1a18" stroke="#4eca8b" stroke-width="0.8"/>
+          <text x="330" y="126" text-anchor="middle" font-size="11" fill="#c9cdd8" font-family="'JetBrains Mono',monospace">A</text>
+          <rect x="372" y="110" width="44" height="24" rx="4" fill="#0e1a18" stroke="#4eca8b" stroke-width="0.8"/>
+          <text x="394" y="126" text-anchor="middle" font-size="11" fill="#c9cdd8" font-family="'JetBrains Mono',monospace">C</text>
+          <line x1="420" y1="52" x2="378" y2="67" stroke="#4a4d57" stroke-width="0.8"/>
+          <line x1="448" y1="52" x2="494" y2="67" stroke="#4a4d57" stroke-width="0.8"/>
+          <line x1="352" y1="92" x2="334" y2="109" stroke="#4a4d57" stroke-width="0.8"/>
+          <line x1="376" y1="92" x2="390" y2="109" stroke="#4a4d57" stroke-width="0.8"/>
+          <text x="435" y="165" text-anchor="middle" font-size="11" fill="#4eca8b" font-family="'Syne',sans-serif">O(log n)</text>
+        </svg>
+
+        <div class="callout callout-ok">
+          На практиці treeify майже ніколи не спрацьовує при нормальному <code>hashCode()</code>. Якщо бачите дерева — перевірте хеш-функцію.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: Resize -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-red">критично</span>
+        <h2>Resize — подвоєння масиву</h2>
+        <p>Коли <code>size > threshold</code> — HashMap створює новий масив <code>capacity × 2</code> і перерозподіляє всі елементи. Це <strong>O(n)</strong> операція.</p>
+        <div class="code"><span class="cm">// Спрощено: HashMap.resize()</span>
+<span class="kw">int</span> newCap = oldCap &lt;&lt; <span class="num">1</span>;           <span class="cm">// × 2</span>
+<span class="cls">Node</span>&lt;K,V&gt;[] newTab = <span class="kw">new</span> <span class="cls">Node</span>[newCap];
+
+<span class="kw">for</span> (<span class="kw">int</span> j = <span class="num">0</span>; j &lt; oldCap; j++) {
+    <span class="cls">Node</span>&lt;K,V&gt; e = oldTab[j];
+    <span class="kw">if</span> (e != <span class="kw">null</span>) {
+        <span class="cm">// перевіряємо один біт, що додався</span>
+        <span class="kw">if</span> ((e.hash &amp; oldCap) == <span class="num">0</span>)
+            <span class="cm">// індекс не змінюється: j</span>
+        <span class="kw">else</span>
+            <span class="cm">// новий індекс: j + oldCap</span>
+    }
+}</div>
+      </div>
+      <div class="card">
+        <h3>Розумний трюк Java 8 — без повного rehash</h3>
+        <p>При подвоєнні capacity додається рівно <strong>один біт</strong> у масці індексу. Старий хеш або дає той самий індекс (новий bit = 0) або <code>oldIndex + oldCapacity</code> (новий bit = 1). Перераховувати хеш не потрібно.</p>
+        <hr class="sep">
+        <h3>Як уникнути зайвих resize</h3>
+        <div class="code"><span class="cm">// Якщо знаєте розмір наперед</span>
+<span class="kw">new</span> <span class="cls">HashMap</span>&lt;&gt;(<span class="num">1334</span>);          <span class="cm">// 1000 / 0.75 + 1</span>
+
+<span class="cm">// Guava (зручніше)</span>
+<span class="cls">Maps</span>.newHashMapWithExpectedSize(<span class="num">1000</span>);
+
+<span class="cm">// Java 19+</span>
+<span class="cls">HashMap</span>.newHashMap(<span class="num">1000</span>);</div>
+        <div class="callout callout-warn">
+          HashMap <strong>не thread-safe</strong> під час resize. У Java 6 міг виникнути infinite loop. У Java 8+ — data race та втрата даних. Використовуйте <code>ConcurrentHashMap</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: LinkedHashMap -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-green">підклас</span>
+        <h2>LinkedHashMap</h2>
+        <p>Розширює HashMap. Кожен <code>Entry</code> має два додаткових поля: <code>before</code> і <code>after</code> — doubly linked list поверх hash table.</p>
+        <div class="code"><span class="kw">static class</span> <span class="cls">Entry</span>&lt;K,V&gt; <span class="kw">extends</span> <span class="cls">HashMap.Node</span>&lt;K,V&gt; {
+    <span class="cls">Entry</span>&lt;K,V&gt; before, after;  <span class="cm">// doubly linked list</span>
+}
+
+<span class="cm">// Два режими:</span>
+<span class="kw">new</span> <span class="cls">LinkedHashMap</span>&lt;&gt;()                       <span class="cm">// insertion order</span>
+<span class="kw">new</span> <span class="cls">LinkedHashMap</span>&lt;&gt;(<span class="num">16</span>, <span class="num">0.75f</span>, <span class="kw">true</span>)   <span class="cm">// access order (LRU)</span></div>
+      </div>
+      <div class="card">
+        <h3>LRU Cache — класична реалізація</h3>
+        <p><code>accessOrder = true</code> + перевизначити <code>removeEldestEntry</code>. При кожному <code>get</code> або <code>put</code> звернений елемент переміщується в хвіст. Голова = найменш нещодавно використаний.</p>
+        <div class="code"><span class="kw">int</span> MAX_SIZE = <span class="num">100</span>;
+
+<span class="kw">var</span> lruCache = <span class="kw">new</span> <span class="cls">LinkedHashMap</span>&lt;K, V&gt;(
+        <span class="num">16</span>, <span class="num">0.75f</span>, <span class="kw">true</span>) {      <span class="cm">// accessOrder!</span>
+
+    <span class="kw">@Override</span>
+    <span class="kw">protected boolean</span> removeEldestEntry(
+            <span class="cls">Map.Entry</span>&lt;K, V&gt; eldest) {
+        <span class="kw">return</span> size() &gt; MAX_SIZE; <span class="cm">// видаляємо LRU</span>
+    }
+};</div>
+        <div class="grid2" style="margin-top:.75rem">
+          <div class="metric"><div class="val">O(1)</div><div class="lbl">get / put</div></div>
+          <div class="metric"><div class="val">+16 B</div><div class="lbl">на entry (2 pointer)</div></div>
+        </div>
+        <div class="callout callout-ok" style="margin-top:.75rem">
+          Ітерація LinkedHashMap завжди в передбачуваному порядку — вставки або останнього доступу. На відміну від HashMap.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: TreeMap -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-gray">sorted</span>
+        <h2>TreeMap</h2>
+        <p>Реалізує <code>NavigableMap</code> через червоно-чорне дерево. Ключі <strong>завжди відсортовані</strong>. <code>hashCode()</code> не використовується взагалі — тільки <code>compareTo</code> / <code>Comparator</code>.</p>
+        <div class="code"><span class="cm">// Природній порядок</span>
+<span class="kw">new</span> <span class="cls">TreeMap</span>&lt;<span class="cls">String</span>, <span class="cls">Integer</span>&gt;()
+
+<span class="cm">// Reverse order</span>
+<span class="kw">new</span> <span class="cls">TreeMap</span>&lt;&gt;(<span class="cls">Comparator</span>.reverseOrder())
+
+<span class="cm">// NavigableMap API</span>
+map.firstKey()           <span class="cm">// мінімальний ключ</span>
+map.lastKey()            <span class="cm">// максимальний ключ</span>
+map.floorKey(<span class="str">"cat"</span>)     <span class="cm">// найбільший ≤ "cat"</span>
+map.ceilingKey(<span class="str">"cat"</span>)  <span class="cm">// найменший ≥ "cat"</span>
+map.subMap(<span class="str">"a"</span>, <span class="str">"m"</span>)   <span class="cm">// підмножина [a, m)</span>
+map.headMap(<span class="str">"m"</span>)       <span class="cm">// усе &lt; "m"</span>
+map.tailMap(<span class="str">"m"</span>)       <span class="cm">// усе ≥ "m"</span></div>
+      </div>
+      <div class="card">
+        <div class="grid2">
+          <div class="metric"><div class="val">O(log n)</div><div class="lbl">get / put / remove</div></div>
+          <div class="metric"><div class="val">null key</div><div class="lbl" style="color:var(--red)">NullPointerException</div></div>
+        </div>
+        <hr class="sep">
+        <h3>Коли TreeMap, а не HashMap</h3>
+        <ul>
+          <li>Потрібна sorted iteration</li>
+          <li>Range queries: <code>subMap</code>, <code>headMap</code>, <code>tailMap</code></li>
+          <li>Closest-match: <code>floorKey</code>, <code>ceilingKey</code></li>
+          <li>Ключ не має нормального <code>hashCode()</code></li>
+        </ul>
+        <div class="callout callout-warn" style="margin-top:.75rem">
+          <strong>Класичний баг:</strong> TreeMap використовує тільки <code>compareTo</code>. Якщо Comparator повертає 0 для двох різних об'єктів — другий мовчки <em>перезапише</em> перший, навіть якщо <code>equals()</code> повертає <code>false</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: Порівняння -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-purple">порівняння</span>
+        <h2>HashMap vs LinkedHashMap vs TreeMap</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th style="color:var(--blue)">HashMap</th>
+                <th style="color:var(--green)">LinkedHashMap</th>
+                <th style="color:var(--muted)">TreeMap</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Структура</td><td>hash table</td><td>hash + dll</td><td>RB tree</td></tr>
+              <tr><td>get / put</td><td class="td-good">O(1)*</td><td class="td-good">O(1)*</td><td class="td-warn">O(log n)</td></tr>
+              <tr><td>Порядок ітерації</td><td class="td-bad">немає</td><td class="td-good">insertion / LRU</td><td class="td-good">sorted</td></tr>
+              <tr><td>null key</td><td class="td-good">1 null</td><td class="td-good">1 null</td><td class="td-bad">NPE</td></tr>
+              <tr><td>hashCode() потрібен</td><td class="td-warn">так</td><td class="td-warn">так</td><td class="td-good">ні</td></tr>
+              <tr><td>Range queries</td><td class="td-bad">немає</td><td class="td-bad">немає</td><td class="td-good">subMap, floor, ceil</td></tr>
+              <tr><td>Пам'ять / entry</td><td class="td-good">~48 B</td><td class="td-warn">~64 B</td><td class="td-warn">~48 B + pointers</td></tr>
+              <tr><td>Thread-safe</td><td class="td-bad">ні</td><td class="td-bad">ні</td><td class="td-bad">ні</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:.5rem;font-size:11px;color:var(--hint)">* O(1) амортизовано; O(n) worst case при поганому hashCode без treeify</p>
+      </div>
+      <div class="card">
+        <h3>Правило вибору</h3>
+        <ul>
+          <li>Просто key-value без гарантій порядку → <strong>HashMap</strong></li>
+          <li>Потрібен порядок вставки або LRU-cache → <strong>LinkedHashMap</strong></li>
+          <li>Sorted keys або range queries → <strong>TreeMap</strong></li>
+          <li>Concurrent read/write → <strong>ConcurrentHashMap</strong></li>
+          <li>Read-heavy, write-rare → <strong>CopyOnWriteArrayMap</strong> (рідко)</li>
+        </ul>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> намалюй структуру HashMap (масив + list/tree), поясни hash(), treeify умову, скажи що resize — O(n). Потім поясни різницю трьох Map через "порядок і складність".
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const screens = document.querySelectorAll('.screen');
+const items   = document.querySelectorAll('.nav-item');
+
+function go(i) {
+  screens.forEach((s, idx) => s.classList.toggle('on', idx === i));
+  items.forEach((it, idx) => it.classList.toggle('active', idx === i));
+}
+</script>
+</body>
+</html>

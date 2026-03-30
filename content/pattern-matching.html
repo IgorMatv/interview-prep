@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pattern Matching — Java 21</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f11;
+  --bg2: #16181c;
+  --bg3: #1e2026;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #e8e9ec;
+  --muted: #7a7d87;
+  --hint: #4a4d57;
+  --blue: #5b9cf6;
+  --blue-bg: rgba(91,156,246,0.1);
+  --green: #4eca8b;
+  --green-bg: rgba(78,202,139,0.1);
+  --amber: #f0a843;
+  --amber-bg: rgba(240,168,67,0.1);
+  --red: #f05a5a;
+  --red-bg: rgba(240,90,90,0.1);
+  --purple: #a78bf6;
+  --purple-bg: rgba(167,139,246,0.1);
+  --teal: #3ecfcf;
+  --font-body: 'Syne', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; line-height: 1.6; }
+
+.header { border-bottom: 1px solid var(--border); padding: 1.5rem 2rem; display: flex; align-items: center; gap: 1rem; position: sticky; top: 0; background: var(--bg); z-index: 100; }
+.header-back { color: var(--muted); text-decoration: none; font-size: 13px; display: flex; align-items: center; gap: 5px; transition: color .15s; }
+.header-back:hover { color: var(--text); }
+.header-divider { color: var(--hint); font-size: 13px; }
+.header h1 { font-size: 15px; font-weight: 500; }
+.header-tag { margin-left: auto; font-size: 11px; font-family: var(--font-mono); color: var(--muted); background: var(--bg3); border: 1px solid var(--border); padding: 3px 9px; border-radius: 20px; }
+
+.layout { display: flex; min-height: calc(100vh - 61px); }
+
+.sidebar { width: 220px; flex-shrink: 0; border-right: 1px solid var(--border); padding: 1.5rem 0; position: sticky; top: 61px; height: calc(100vh - 61px); overflow-y: auto; }
+.sidebar-section { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--hint); padding: 0 1.25rem .5rem; margin-top: .5rem; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: .55rem 1.25rem; font-size: 13px; color: var(--muted); cursor: pointer; border-left: 2px solid transparent; transition: all .12s; user-select: none; }
+.nav-item:hover { color: var(--text); background: var(--bg2); }
+.nav-item.active { color: var(--text); border-left-color: var(--purple); background: var(--purple-bg); }
+.nav-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--hint); flex-shrink: 0; transition: background .12s; }
+.nav-item.active .nav-dot { background: var(--purple); }
+
+.content { flex: 1; padding: 2rem 2.5rem; max-width: 760px; }
+.screen { display: none; }
+.screen.on { display: block; }
+
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+.tag { display: inline-block; font-size: 11px; font-family: var(--font-mono); padding: 2px 9px; border-radius: 20px; margin-bottom: .6rem; font-weight: 500; }
+.tag-blue   { background: var(--blue-bg);   color: var(--blue); }
+.tag-amber  { background: var(--amber-bg);  color: var(--amber); }
+.tag-red    { background: var(--red-bg);    color: var(--red); }
+.tag-green  { background: var(--green-bg);  color: var(--green); }
+.tag-purple { background: var(--purple-bg); color: var(--purple); }
+
+h2 { font-size: 18px; font-weight: 600; margin-bottom: .5rem; }
+h3 { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: .4rem; }
+p, li { font-size: 13.5px; color: #9ea3b0; line-height: 1.7; }
+ul { padding-left: 1.1rem; margin-top: .3rem; }
+li { margin-bottom: .25rem; }
+strong { color: var(--text); font-weight: 500; }
+code { font-family: var(--font-mono); font-size: 12px; background: var(--bg3); padding: 1px 5px; border-radius: 4px; color: var(--teal); }
+.sep { border: none; border-top: 1px solid var(--border); margin: .9rem 0; }
+
+.code { font-family: var(--font-mono); font-size: 12.5px; background: #111318; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem 1.25rem; margin: .75rem 0; line-height: 1.8; white-space: pre; overflow-x: auto; color: #c9cdd8; }
+.kw  { color: #7eb8f7; }
+.cm  { color: #4e5466; font-style: italic; }
+.str { color: #7dcf8e; }
+.num { color: #f0a843; }
+.cls { color: #e8b86d; }
+.ann { color: #a78bf6; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .75rem; }
+.metric { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .9rem 1rem; }
+.metric .val { font-size: 20px; font-weight: 600; color: var(--text); font-family: var(--font-mono); }
+.metric .lbl { font-size: 11px; color: var(--muted); margin-top: 3px; font-family: var(--font-mono); }
+
+.callout { border-radius: var(--radius-sm); padding: .7rem 1rem; margin-top: .75rem; font-size: 13px; line-height: 1.6; }
+.callout-warn { background: var(--amber-bg); border-left: 3px solid var(--amber); color: #c8904a; }
+.callout-ok   { background: var(--green-bg); border-left: 3px solid var(--green);  color: #4ab87a; }
+.callout-info { background: var(--blue-bg);  border-left: 3px solid var(--blue);   color: #5b9cf6; }
+.callout-red  { background: var(--red-bg);   border-left: 3px solid var(--red);    color: #c85a5a; }
+.callout strong { color: inherit; }
+
+.evolution { display: flex; gap: 0; margin: .75rem 0; }
+.evo-step { flex: 1; background: var(--bg3); border: 1px solid var(--border); padding: .75rem; position: relative; }
+.evo-step:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.evo-step:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.evo-step + .evo-step { border-left: none; }
+.evo-ver { font-size: 10px; font-family: var(--font-mono); color: var(--muted); margin-bottom: 3px; }
+.evo-title { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+.evo-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.evo-step.highlight { background: var(--purple-bg); border-color: var(--purple); }
+.evo-step.highlight .evo-ver { color: var(--purple); }
+
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin: .75rem 0; }
+.compare-col { background: var(--bg3); border-radius: var(--radius-sm); border: 1px solid var(--border); padding: .75rem 1rem; }
+.compare-col h4 { font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: .5rem; font-family: var(--font-mono); }
+.compare-col.good { border-color: rgba(78,202,139,0.3); }
+.compare-col.bad  { border-color: rgba(240,90,90,0.25); }
+
+.table-wrap { overflow-x: auto; margin-top: .75rem; }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th { text-align: left; padding: 7px 10px; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border2); font-family: var(--font-mono); font-size: 11px; }
+td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: #9ea3b0; }
+tr:last-child td { border-bottom: none; }
+.td-good { color: var(--green); }
+.td-bad  { color: var(--red); }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Pattern Matching</h1>
+  <span class="header-tag">Java 16 → 21</span>
+</header>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Еволюція</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Загальна картина</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>instanceof (Java 16)</div>
+    <div class="sidebar-section">Switch Patterns</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Type patterns</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Guarded patterns</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Record patterns</div>
+    <div class="sidebar-section">Нюанси</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Dominance</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Exhaustiveness</div>
+    <div class="nav-item" onclick="go(7)"><span class="nav-dot"></span>Антипатерни</div>
+  </nav>
+
+  <main class="content">
+
+    <!-- 0: Загальна картина -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-purple">огляд</span>
+        <h2>Еволюція Pattern Matching</h2>
+        <p>Pattern matching — це перевірка типу + binding змінної в одному виразі. Java додавала його поступово, від простого <code>instanceof</code> до повноцінного switch з деконструкцією.</p>
+
+        <div class="evolution" style="margin-top:.75rem">
+          <div class="evo-step">
+            <div class="evo-ver">Java 16</div>
+            <div class="evo-title">instanceof</div>
+            <div class="evo-desc">binding variable без cast</div>
+          </div>
+          <div class="evo-step">
+            <div class="evo-ver">Java 17</div>
+            <div class="evo-title">Sealed</div>
+            <div class="evo-desc">закрита ієрархія</div>
+          </div>
+          <div class="evo-step">
+            <div class="evo-ver">Java 21</div>
+            <div class="evo-title">Switch patterns</div>
+            <div class="evo-desc">type + guard + record</div>
+          </div>
+          <div class="evo-step highlight">
+            <div class="evo-ver">Java 21</div>
+            <div class="evo-title">Record patterns</div>
+            <div class="evo-desc">деконструкція полів</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>До і після — відчуй різницю</h3>
+        <div class="compare">
+          <div class="compare-col bad">
+            <h4>до Java 16</h4>
+            <div class="code" style="margin:0;font-size:11.5px"><span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="cls">String</span>) {
+  <span class="cls">String</span> s = (<span class="cls">String</span>) obj;
+  System.out.println(s.length());
+}</div>
+          </div>
+          <div class="compare-col good">
+            <h4>Java 16+</h4>
+            <div class="code" style="margin:0;font-size:11.5px"><span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="cls">String</span> s) {
+  System.out.println(s.length());
+  <span class="cm">// s скопована з obj</span>
+}</div>
+          </div>
+        </div>
+        <div class="compare">
+          <div class="compare-col bad">
+            <h4>до Java 21</h4>
+            <div class="code" style="margin:0;font-size:11.5px"><span class="kw">if</span> (shape <span class="kw">instanceof</span> <span class="cls">Circle</span> c) {
+  area = Math.PI * c.r() * c.r();
+} <span class="kw">else if</span> (shape <span class="kw">instanceof</span> <span class="cls">Rect</span> r) {
+  area = r.w() * r.h();
+}</div>
+          </div>
+          <div class="compare-col good">
+            <h4>Java 21</h4>
+            <div class="code" style="margin:0;font-size:11.5px">area = <span class="kw">switch</span> (shape) {
+  <span class="kw">case</span> <span class="cls">Circle</span> c  -> Math.PI*c.r()*c.r();
+  <span class="kw">case</span> <span class="cls">Rect</span> r    -> r.w() * r.h();
+};</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: instanceof -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-blue">Java 16</span>
+        <h2>Pattern matching для instanceof</h2>
+        <p>Замість <code>instanceof</code> + явного cast — binding variable автоматично доступна в тілі if-блоку.</p>
+        <div class="code"><span class="cm">// Scope binding variable</span>
+<span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="cls">String</span> s) {
+    <span class="cm">// s доступна тут: String</span>
+    System.out.println(s.toUpperCase());
+}
+<span class="cm">// s недоступна тут</span>
+
+<span class="cm">// Можна одразу використовувати в умові</span>
+<span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="cls">String</span> s && s.length() > <span class="num">5</span>) {
+    System.out.println(s);
+}</div>
+      </div>
+      <div class="card">
+        <h3>Тонкощі scope</h3>
+        <div class="code"><span class="cm">// Negation: s доступна в else-гілці</span>
+<span class="kw">if</span> (!(obj <span class="kw">instanceof</span> <span class="cls">String</span> s)) {
+    <span class="cm">// s тут НЕ доступна</span>
+    <span class="kw">return</span>;
+}
+<span class="cm">// після early return — s доступна!</span>
+System.out.println(s.length());
+
+<span class="cm">// Shadowing: binding variable може тінити поле</span>
+<span class="kw">class</span> <span class="cls">Foo</span> {
+    <span class="cls">Object</span> s = <span class="str">"field"</span>;
+    <span class="kw">void</span> check(<span class="cls">Object</span> obj) {
+        <span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="cls">String</span> s) {
+            <span class="cm">// s тут — binding var, не поле!</span>
+        }
+    }
+}</div>
+        <div class="callout callout-warn">
+          Binding variable <strong>не є final</strong> — її можна перепризначити. Але компілятор попередить якщо це виглядає підозріло.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: Type patterns in switch -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-purple">Java 21</span>
+        <h2>Type patterns у switch</h2>
+        <p>Switch може матчити по типу, а не тільки по значенню. Кожен <code>case</code> перевіряє тип і одразу створює typed змінну.</p>
+        <div class="code"><span class="kw">sealed interface</span> <span class="cls">Shape</span>
+    <span class="kw">permits</span> <span class="cls">Circle</span>, <span class="cls">Rectangle</span>, <span class="cls">Triangle</span> {}
+
+<span class="kw">double</span> area(<span class="cls">Shape</span> s) {
+    <span class="kw">return switch</span> (s) {
+        <span class="kw">case</span> <span class="cls">Circle</span> c        -> Math.PI * c.r() * c.r();
+        <span class="kw">case</span> <span class="cls">Rectangle</span> r    -> r.width() * r.height();
+        <span class="kw">case</span> <span class="cls">Triangle</span> t     -> t.base() * t.height() / <span class="num">2</span>;
+        <span class="cm">// default не потрібен — sealed є exhaustive!</span>
+    };
+}</div>
+      </div>
+      <div class="card">
+        <h3>null у switch — змінилась поведінка</h3>
+        <p>До Java 21 switch кидав <code>NullPointerException</code> на <code>null</code>. Тепер можна явно обробити:</p>
+        <div class="code"><span class="kw">switch</span> (obj) {
+    <span class="kw">case null</span>          -> System.out.println(<span class="str">"null!"</span>);
+    <span class="kw">case</span> <span class="cls">String</span> s     -> System.out.println(s);
+    <span class="kw">case</span> <span class="cls">Integer</span> i    -> System.out.println(i);
+    <span class="kw">default</span>            -> System.out.println(<span class="str">"other"</span>);
+}
+
+<span class="cm">// або об'єднати null з дефолтом</span>
+<span class="kw">case null</span>, <span class="kw">default</span> -> System.out.println(<span class="str">"none"</span>);</div>
+        <div class="callout callout-info">
+          Switch-expression (<code>switch (...) { ... }</code> зі стрілкою і значенням) — stable з Java 14. Pattern matching у switch — stable з Java <strong>21</strong>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: Guarded patterns -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-amber">Java 21</span>
+        <h2>Guarded patterns — <code>when</code></h2>
+        <p>До type pattern можна додати <code>when</code>-умову. Матч спрацює тільки якщо тип збігається <strong>і</strong> умова <code>true</code>.</p>
+        <div class="code"><span class="kw">String</span> classify(<span class="cls">Object</span> obj) {
+    <span class="kw">return switch</span> (obj) {
+        <span class="kw">case</span> <span class="cls">Integer</span> i <span class="kw">when</span> i < <span class="num">0</span>  -> <span class="str">"negative int"</span>;
+        <span class="kw">case</span> <span class="cls">Integer</span> i <span class="kw">when</span> i == <span class="num">0</span> -> <span class="str">"zero"</span>;
+        <span class="kw">case</span> <span class="cls">Integer</span> i              -> <span class="str">"positive int"</span>;
+        <span class="kw">case</span> <span class="cls">String</span> s <span class="kw">when</span> s.isEmpty() -> <span class="str">"empty string"</span>;
+        <span class="kw">case</span> <span class="cls">String</span> s               -> <span class="str">"string: "</span> + s;
+        <span class="kw">default</span>                      -> <span class="str">"other"</span>;
+    };
+}</div>
+      </div>
+      <div class="card">
+        <h3>Порядок важливий — dominance</h3>
+        <p>Case з <code>when</code> є <strong>вужчим</strong> ніж case без нього. Якщо поставити broader case вище — компілятор видасть помилку.</p>
+        <div class="code"><span class="cm">// ПОМИЛКА компіляції: dominance violation</span>
+<span class="kw">switch</span> (obj) {
+    <span class="kw">case</span> <span class="cls">Integer</span> i              -> ...  <span class="cm">// catches all Integer</span>
+    <span class="kw">case</span> <span class="cls">Integer</span> i <span class="kw">when</span> i > <span class="num">0</span>  -> ...  <span class="cm">// dead code!</span>
+}
+
+<span class="cm">// ПРАВИЛЬНО: narrower вище</span>
+<span class="kw">switch</span> (obj) {
+    <span class="kw">case</span> <span class="cls">Integer</span> i <span class="kw">when</span> i > <span class="num">0</span>  -> ...
+    <span class="kw">case</span> <span class="cls">Integer</span> i              -> ...
+}</div>
+        <div class="callout callout-ok">
+          <code>when</code> замінив старий <code>&amp;&amp;</code> у case, але читається значно краще і компілятор статично перевіряє порядок.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: Record patterns -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-purple">Java 21</span>
+        <h2>Record patterns — деконструкція</h2>
+        <p>При матчингу по record-типу можна одразу <strong>деструктурувати</strong> його компоненти. Не треба окремо викликати accessor-методи.</p>
+        <div class="code"><span class="kw">record</span> <span class="cls">Point</span>(<span class="kw">int</span> x, <span class="kw">int</span> y) {}
+<span class="kw">record</span> <span class="cls">Circle</span>(<span class="cls">Point</span> center, <span class="kw">double</span> radius) {}
+
+<span class="cm">// Без record patterns</span>
+<span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="cls">Circle</span> c) {
+    <span class="kw">int</span> x = c.center().x();
+    <span class="kw">int</span> y = c.center().y();
+}
+
+<span class="cm">// З record patterns — деконструкція одразу</span>
+<span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="cls">Circle</span>(<span class="cls">Point</span>(<span class="kw">int</span> x, <span class="kw">int</span> y), <span class="kw">double</span> r)) {
+    System.out.println(x + <span class="str">", "</span> + y + <span class="str">", r="</span> + r);
+}</div>
+      </div>
+      <div class="card">
+        <h3>Вкладені record patterns у switch</h3>
+        <div class="code"><span class="kw">sealed interface</span> <span class="cls">Expr</span>
+    <span class="kw">permits</span> <span class="cls">Num</span>, <span class="cls">Add</span>, <span class="cls">Mul</span> {}
+<span class="kw">record</span> <span class="cls">Num</span>(<span class="kw">int</span> v) <span class="kw">implements</span> <span class="cls">Expr</span> {}
+<span class="kw">record</span> <span class="cls">Add</span>(<span class="cls">Expr</span> l, <span class="cls">Expr</span> r) <span class="kw">implements</span> <span class="cls">Expr</span> {}
+<span class="kw">record</span> <span class="cls">Mul</span>(<span class="cls">Expr</span> l, <span class="cls">Expr</span> r) <span class="kw">implements</span> <span class="cls">Expr</span> {}
+
+<span class="kw">int</span> eval(<span class="cls">Expr</span> e) {
+    <span class="kw">return switch</span> (e) {
+        <span class="kw">case</span> <span class="cls">Num</span>(<span class="kw">int</span> v)          -> v;
+        <span class="kw">case</span> <span class="cls">Add</span>(<span class="cls">Expr</span> l, <span class="cls">Expr</span> r) -> eval(l) + eval(r);
+        <span class="kw">case</span> <span class="cls">Mul</span>(<span class="cls">Expr</span> l, <span class="cls">Expr</span> r) -> eval(l) * eval(r);
+        <span class="cm">// exhaustive — default не потрібен</span>
+    };
+}</div>
+        <div class="callout callout-info">
+          Це і є "Expression Problem" — найкращий приклад для демонстрації sealed + record + pattern matching разом на співбесіді.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: Dominance -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-amber">нюанс</span>
+        <h2>Dominance — порядок case має значення</h2>
+        <p>Один pattern <strong>домінує</strong> над іншим якщо він матчить всі значення, що матчить другий. Компілятор забороняє ставити broader pattern вище narrower.</p>
+        <div class="code"><span class="cm">// Dominance між типами в ієрархії</span>
+<span class="kw">switch</span> (animal) {
+    <span class="kw">case</span> <span class="cls">Animal</span> a   -> ...  <span class="cm">// ERROR: домінує над Cat</span>
+    <span class="kw">case</span> <span class="cls">Cat</span> c      -> ...  <span class="cm">// dead code</span>
+}
+
+<span class="cm">// Правильно</span>
+<span class="kw">switch</span> (animal) {
+    <span class="kw">case</span> <span class="cls">Cat</span> c      -> ...  <span class="cm">// спочатку вузький</span>
+    <span class="kw">case</span> <span class="cls">Animal</span> a   -> ...  <span class="cm">// потім широкий</span>
+}
+
+<span class="cm">// Dominance: guarded vs unguarded</span>
+<span class="kw">switch</span> (n) {
+    <span class="kw">case</span> <span class="cls">Integer</span> i              -> ... <span class="cm">// ERROR: домінує</span>
+    <span class="kw">case</span> <span class="cls">Integer</span> i <span class="kw">when</span> i > <span class="num">0</span>  -> ... <span class="cm">// dead code</span>
+}</div>
+      </div>
+      <div class="card">
+        <h3>Чому це compile-time, а не runtime?</h3>
+        <p>Компілятор будує граф dominance між усіма case і визначає мертвий код статично. Це одна з головних переваг pattern matching — помилки порядку ловляться <em>до</em> запуску.</p>
+        <div class="callout callout-ok">
+          <strong>Правило:</strong> завжди розставляй case від найвужчого до найширшого. Guarded pattern (з <code>when</code>) — вужчий за unguarded того самого типу. Subtype — вужчий за supertype.
+        </div>
+        <hr class="sep">
+        <h3>Dominance між record patterns</h3>
+        <div class="code"><span class="kw">record</span> <span class="cls">Box</span>(<span class="cls">Object</span> content) {}
+
+<span class="kw">switch</span> (box) {
+    <span class="cm">// вужчий — String всередині</span>
+    <span class="kw">case</span> <span class="cls">Box</span>(<span class="cls">String</span> s) <span class="kw">when</span> s.length() > <span class="num">5</span> -> ...
+    <span class="cm">// ширший — будь-який String</span>
+    <span class="kw">case</span> <span class="cls">Box</span>(<span class="cls">String</span> s) -> ...
+    <span class="cm">// найширший</span>
+    <span class="kw">case</span> <span class="cls">Box</span> b         -> ...
+}</div>
+      </div>
+    </div>
+
+    <!-- 6: Exhaustiveness -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-green">гарантія</span>
+        <h2>Exhaustiveness — повнота switch</h2>
+        <p>Switch expression <strong>зобов'язаний</strong> покривати всі можливі значення. Для sealed ієрархій компілятор перевіряє це статично.</p>
+        <div class="code"><span class="kw">sealed interface</span> <span class="cls">Status</span>
+    <span class="kw">permits</span> <span class="cls">Ok</span>, <span class="cls">Error</span>, <span class="cls">Pending</span> {}
+
+<span class="cm">// ПОМИЛКА: не покрито Pending</span>
+<span class="kw">String</span> msg = <span class="kw">switch</span> (status) {
+    <span class="kw">case</span> <span class="cls">Ok</span> ok       -> <span class="str">"ok"</span>;
+    <span class="kw">case</span> <span class="cls">Error</span> e     -> <span class="str">"err"</span>;
+    <span class="cm">// compile error: не всі варіанти покриті</span>
+};
+
+<span class="cm">// ПРАВИЛЬНО</span>
+<span class="kw">String</span> msg = <span class="kw">switch</span> (status) {
+    <span class="kw">case</span> <span class="cls">Ok</span> ok       -> <span class="str">"ok"</span>;
+    <span class="kw">case</span> <span class="cls">Error</span> e     -> <span class="str">"err: "</span> + e.msg();
+    <span class="kw">case</span> <span class="cls">Pending</span> p   -> <span class="str">"pending"</span>;
+};</div>
+      </div>
+      <div class="card">
+        <h3>Що дає exhaustiveness з sealed</h3>
+        <p>Якщо додати новий subtype до sealed interface — всі switch без <code>default</code> <strong>перестануть компілюватись</strong>. Ти знайдеш всі місця де треба обробити новий випадок.</p>
+        <div class="callout callout-warn">
+          <strong>Антипатерн:</strong> додавати <code>default</code> у sealed switch. Ти втрачаєш compile-time safety — новий subtype буде мовчки проходити через default замість того щоб викинути помилку компіляції.
+        </div>
+        <hr class="sep">
+        <h3>Exhaustiveness для non-sealed типів</h3>
+        <div class="code"><span class="cm">// Для Object або не-sealed — треба default</span>
+<span class="kw">switch</span> (obj) {
+    <span class="kw">case</span> <span class="cls">String</span> s  -> ...;
+    <span class="kw">case</span> <span class="cls">Integer</span> i -> ...;
+    <span class="kw">default</span>         -> ...;  <span class="cm">// обов'язково</span>
+}
+
+<span class="cm">// Для sealed — default опціональний (і небажаний)</span>
+<span class="kw">switch</span> (shape) {  <span class="cm">// sealed Shape</span>
+    <span class="kw">case</span> <span class="cls">Circle</span> c    -> ...;
+    <span class="kw">case</span> <span class="cls">Rectangle</span> r -> ...;
+    <span class="cm">// НЕ додавай default тут</span>
+}</div>
+      </div>
+    </div>
+
+    <!-- 7: Антипатерни -->
+    <div class="screen" id="s7">
+      <div class="card">
+        <span class="tag tag-red">антипатерни</span>
+        <h2>Типові помилки</h2>
+
+        <h3>1. default у sealed switch</h3>
+        <div class="code"><span class="cm">// ПОГАНО: втрачаємо compile-time safety</span>
+<span class="kw">switch</span> (shape) {
+    <span class="kw">case</span> <span class="cls">Circle</span> c    -> c.area();
+    <span class="kw">default</span>           -> <span class="num">0</span>; <span class="cm">// новий Shape тихо повертає 0</span>
+}
+
+<span class="cm">// ДОБРЕ: exhaustive без default</span>
+<span class="kw">switch</span> (shape) {
+    <span class="kw">case</span> <span class="cls">Circle</span> c    -> c.area();
+    <span class="kw">case</span> <span class="cls">Rectangle</span> r -> r.area();
+    <span class="cm">// compile error якщо додати новий Shape</span>
+}</div>
+
+        <hr class="sep">
+        <h3>2. Неправильний порядок case</h3>
+        <div class="code"><span class="cm">// ПОМИЛКА КОМПІЛЯЦІЇ: broader pattern вище</span>
+<span class="kw">switch</span> (n) {
+    <span class="kw">case</span> <span class="cls">Number</span> n  -> ...;   <span class="cm">// covers Integer теж</span>
+    <span class="kw">case</span> <span class="cls">Integer</span> i -> ...;   <span class="cm">// ERROR: dominated!</span>
+}</div>
+      </div>
+      <div class="card">
+        <h3>3. Забули null у switch expression</h3>
+        <div class="code"><span class="cm">// NullPointerException якщо obj == null</span>
+<span class="kw">switch</span> (obj) {           <span class="cm">// кидає NPE на null!</span>
+    <span class="kw">case</span> <span class="cls">String</span> s -> ...;
+    <span class="kw">default</span>       -> ...;
+}
+
+<span class="cm">// Правильно: явний case null</span>
+<span class="kw">switch</span> (obj) {
+    <span class="kw">case null</span>      -> handleNull();
+    <span class="kw">case</span> <span class="cls">String</span> s -> ...;
+    <span class="kw">default</span>        -> ...;
+}</div>
+
+        <hr class="sep">
+        <h3>4. Змішувати старий і новий синтаксис</h3>
+        <div class="code"><span class="cm">// НЕ можна: pattern + traditional case labels</span>
+<span class="kw">switch</span> (obj) {
+    <span class="kw">case</span> <span class="cls">String</span> s -> ...;  <span class="cm">// новий</span>
+    <span class="kw">case</span> <span class="str">"hello"</span>:  ...;    <span class="cm">// старий — ПОМИЛКА</span>
+}
+<span class="cm">// Вибери один стиль — або arrow, або colon</span></div>
+
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>Підсумок для співбесіди:</strong> instanceof (binding var) → type patterns у switch → guarded patterns (when) → record deconstruction → sealed exhaustiveness. Кожен крок будується на попередньому.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const screens = document.querySelectorAll('.screen');
+const items   = document.querySelectorAll('.nav-item');
+function go(i) {
+  screens.forEach((s, idx) => s.classList.toggle('on', idx === i));
+  items.forEach((it, idx) => it.classList.toggle('active', idx === i));
+}
+</script>
+</body>
+</html>
