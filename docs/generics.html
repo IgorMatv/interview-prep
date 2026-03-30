@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generics: PECS, Type Erasure — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;
+  --blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);
+  --green:#4eca8b;--green-bg:rgba(78,202,139,0.1);
+  --amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);
+  --red:#f05a5a;--red-bg:rgba(240,90,90,0.1);
+  --purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);
+  --teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);
+  --font-body:'Syne',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+  --radius:10px;--radius-sm:6px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}
+.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--teal);background:var(--teal-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--teal)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}
+.tag-amber{background:var(--amber-bg);color:var(--amber)}
+.tag-red{background:var(--red-bg);color:var(--red)}
+.tag-green{background:var(--green-bg);color:var(--green)}
+.tag-teal{background:var(--teal-bg);color:var(--teal)}
+.tag-purple{background:var(--purple-bg);color:var(--purple)}
+.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}
+li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem}
+.metric{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.9rem 1rem}
+.metric .val{font-size:18px;font-weight:600;color:var(--text);font-family:var(--font-mono)}
+.metric .lbl{font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--font-mono)}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin:.75rem 0}
+.compare-col{background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);padding:.75rem 1rem}
+.compare-col h4{font-size:12px;font-weight:500;color:var(--muted);margin-bottom:.5rem;font-family:var(--font-mono)}
+.compare-col.good{border-color:rgba(78,202,139,0.3)}
+.compare-col.bad{border-color:rgba(240,90,90,0.25)}
+.pecs-box{border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.5rem 0;border:1px solid var(--border)}
+.pecs-producer{background:rgba(62,207,207,0.07);border-color:rgba(62,207,207,0.25)}
+.pecs-consumer{background:rgba(167,139,246,0.07);border-color:rgba(167,139,246,0.25)}
+.pecs-label{font-size:11px;font-family:var(--font-mono);font-weight:500;margin-bottom:.4rem}
+.pecs-producer .pecs-label{color:var(--teal)}
+.pecs-consumer .pecs-label{color:var(--purple)}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Generics: PECS, Type Erasure</h1>
+  <span class="header-tag">Java</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Основи</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Variance — навіщо</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>? extends — covariance</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>? super — contravariance</div>
+    <div class="sidebar-section">PECS</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>PECS правило</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Практичні приклади</div>
+    <div class="sidebar-section">Type Erasure</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Як працює erasure</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Наслідки erasure</div>
+    <div class="nav-item" onclick="go(7)"><span class="nav-dot"></span>Антипатерни</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0: Variance -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-teal">контекст</span>
+        <h2>Variance — чому List&lt;Dog&gt; не є List&lt;Animal&gt;</h2>
+        <p>Масиви в Java <strong>covariant</strong>: <code>Dog[]</code> можна присвоїти <code>Animal[]</code>. Generics — <strong>invariant</strong>: <code>List&lt;Dog&gt;</code> <em>не є</em> <code>List&lt;Animal&gt;</code>. Це не баг — це захист.</p>
+        <div class="code"><span class="cm">// Масиви: covariant — але небезпечно!</span>
+<span class="cls">Animal</span>[] animals = <span class="kw">new</span> <span class="cls">Dog</span>[<span class="num">3</span>];
+animals[<span class="num">0</span>] = <span class="kw">new</span> <span class="cls">Cat</span>();  <span class="cm">// компілюється!</span>
+<span class="cm">// → ArrayStoreException в runtime</span>
+
+<span class="cm">// Generics: invariant — компілятор захищає</span>
+<span class="cls">List</span>&lt;<span class="cls">Animal</span>&gt; animals = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;<span class="cls">Dog</span>&gt;();
+<span class="cm">// → COMPILE ERROR: incompatible types</span>
+<span class="cm">// Немає можливості покласти Cat в Dog-список</span></div>
+        <div class="callout callout-info">
+          <strong>Чому invariant?</strong> Якби <code>List&lt;Dog&gt;</code> дозволявся як <code>List&lt;Animal&gt;</code>, то через посилання типу <code>List&lt;Animal&gt;</code> можна було б додати <code>Cat</code> — і це зламало б типову безпеку при читанні як <code>Dog</code>.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Три види variance в Java</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Вид</th><th>Синтаксис</th><th>Читання</th><th>Запис</th></tr></thead>
+            <tbody>
+              <tr><td>Invariant</td><td><code>List&lt;T&gt;</code></td><td class="td-good">так</td><td class="td-good">так</td></tr>
+              <tr><td>Covariant</td><td><code>List&lt;? extends T&gt;</code></td><td class="td-good">так (як T)</td><td class="td-bad">ні (тільки null)</td></tr>
+              <tr><td>Contravariant</td><td><code>List&lt;? super T&gt;</code></td><td class="td-warn">так (як Object)</td><td class="td-good">так (T і subtypes)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: extends -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-teal">covariance</span>
+        <h2>? extends T — читаємо, не пишемо</h2>
+        <p><code>List&lt;? extends Animal&gt;</code> — це список якогось <em>конкретного підтипу</em> Animal, але ми не знаємо якого. Тому можна читати як <code>Animal</code>, але не можна додавати — бо не знаємо точний тип.</p>
+        <div class="code"><span class="cls">List</span>&lt;? <span class="kw">extends</span> <span class="cls">Animal</span>&gt; animals = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;<span class="cls">Dog</span>&gt;();
+
+<span class="cm">// Читання — ОК: завжди повернеться Animal або підтип</span>
+<span class="cls">Animal</span> a = animals.get(<span class="num">0</span>);  <span class="cm">// компілюється</span>
+
+<span class="cm">// Запис — ЗАБОРОНЕНО</span>
+animals.add(<span class="kw">new</span> <span class="cls">Dog</span>());    <span class="cm">// COMPILE ERROR</span>
+animals.add(<span class="kw">new</span> <span class="cls">Animal</span>());  <span class="cm">// COMPILE ERROR</span>
+animals.add(<span class="kw">null</span>);          <span class="cm">// єдиний дозволений варіант</span>
+
+<span class="cm">// Чому? Може всередині ArrayList&lt;Cat&gt;!</span>
+<span class="cm">// Додавання Dog зламало б типову безпеку.</span></div>
+      </div>
+      <div class="card">
+        <h3>Практично: метод що читає колекцію</h3>
+        <div class="code"><span class="cm">// Підраховує суму — не змінює колекцію</span>
+<span class="kw">double</span> sum(<span class="cls">List</span>&lt;? <span class="kw">extends</span> <span class="cls">Number</span>&gt; list) {
+    <span class="kw">double</span> total = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="cls">Number</span> n : list) total += n.doubleValue();
+    <span class="kw">return</span> total;
+}
+
+<span class="cm">// Тепер приймає List&lt;Integer&gt;, List&lt;Double&gt;, List&lt;Long&gt;</span>
+sum(<span class="cls">List</span>.of(<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>));          <span class="cm">// Integer</span>
+sum(<span class="cls">List</span>.of(<span class="num">1.5</span>, <span class="num">2.5</span>));        <span class="cm">// Double</span>
+
+<span class="cm">// Без wildcard — тільки Number, не підтипи!</span>
+<span class="kw">double</span> sumStrict(<span class="cls">List</span>&lt;<span class="cls">Number</span>&gt; list) { ... }
+sumStrict(<span class="cls">List</span>.of(<span class="num">1</span>, <span class="num">2</span>));     <span class="cm">// COMPILE ERROR</span></div>
+        <div class="callout callout-ok">
+          <code>? extends T</code> розширює API: метод починає приймати списки будь-яких підтипів T, а не тільки T.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: super -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-purple">contravariance</span>
+        <h2>? super T — пишемо, читаємо як Object</h2>
+        <p><code>List&lt;? super Dog&gt;</code> — це список, який <em>точно може містити</em> Dog (або більш загальний тип). Можна безпечно додавати Dog та його підтипи. Читання повертає тільки <code>Object</code>.</p>
+        <div class="code"><span class="cls">List</span>&lt;? <span class="kw">super</span> <span class="cls">Dog</span>&gt; dogs = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;<span class="cls">Animal</span>&gt;();
+
+<span class="cm">// Запис — ОК: Dog і його підтипи точно вміщуються</span>
+dogs.add(<span class="kw">new</span> <span class="cls">Dog</span>());          <span class="cm">// ОК</span>
+dogs.add(<span class="kw">new</span> <span class="cls">Labrador</span>());     <span class="cm">// ОК (підтип Dog)</span>
+dogs.add(<span class="kw">new</span> <span class="cls">Animal</span>());       <span class="cm">// COMPILE ERROR</span>
+
+<span class="cm">// Читання — тільки Object</span>
+<span class="cls">Object</span> o = dogs.get(<span class="num">0</span>);        <span class="cm">// ОК</span>
+<span class="cls">Dog</span> d = dogs.get(<span class="num">0</span>);           <span class="cm">// COMPILE ERROR</span>
+<span class="cm">// Може бути ArrayList&lt;Object&gt; — не знаємо</span></div>
+      </div>
+      <div class="card">
+        <h3>Практично: метод що заповнює колекцію</h3>
+        <div class="code"><span class="cm">// Кладе елементи в колекцію — нічого не читає</span>
+<span class="kw">void</span> fill(<span class="cls">List</span>&lt;? <span class="kw">super</span> <span class="cls">Integer</span>&gt; dest, <span class="kw">int</span> count) {
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; count; i++)
+        dest.add(i);
+}
+
+<span class="cls">List</span>&lt;<span class="cls">Integer</span>&gt; ints    = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();
+<span class="cls">List</span>&lt;<span class="cls">Number</span>&gt;  nums    = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();
+<span class="cls">List</span>&lt;<span class="cls">Object</span>&gt;  objects = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();
+
+fill(ints, <span class="num">5</span>);     <span class="cm">// ОК</span>
+fill(nums, <span class="num">5</span>);     <span class="cm">// ОК</span>
+fill(objects, <span class="num">5</span>);  <span class="cm">// ОК</span></div>
+      </div>
+    </div>
+
+    <!-- 3: PECS -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-teal">PECS</span>
+        <h2>Producer Extends, Consumer Super</h2>
+        <p>Мнемоніка від Joshua Bloch (Effective Java). Питай себе: ця колекція <em>постачає</em> елементи в код, чи <em>приймає</em> елементи від коду?</p>
+
+        <div class="pecs-box pecs-producer">
+          <div class="pecs-label">Producer → використовуй extends</div>
+          <p style="font-size:13px;color:#9ea3b0">Колекція <strong style="color:var(--teal)">виробляє</strong> елементи — ти <em>читаєш</em> з неї. Тип елементів гарантовано підтип T.</p>
+          <div class="code" style="margin:.5rem 0;font-size:12px">copy(<span class="cls">List</span>&lt;? <span class="kw">extends</span> T&gt; <strong>src</strong>, ...)  <span class="cm">// src постачає</span></div>
+        </div>
+
+        <div class="pecs-box pecs-consumer">
+          <div class="pecs-label">Consumer → використовуй super</div>
+          <p style="font-size:13px;color:#9ea3b0">Колекція <strong style="color:var(--purple)">споживає</strong> елементи — ти <em>пишеш</em> в неї. Гарантовано вмістить T і підтипи.</p>
+          <div class="code" style="margin:.5rem 0;font-size:12px">copy(..., <span class="cls">List</span>&lt;? <span class="kw">super</span> T&gt; <strong>dest</strong>)  <span class="cm">// dest споживає</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Collections.copy() — класичний PECS</h3>
+        <div class="code"><span class="cm">// Реальна сигнатура з JDK</span>
+<span class="kw">public static</span> &lt;T&gt; <span class="kw">void</span> copy(
+    <span class="cls">List</span>&lt;? <span class="kw">super</span> T&gt; dest,     <span class="cm">// Consumer: пишемо</span>
+    <span class="cls">List</span>&lt;? <span class="kw">extends</span> T&gt; src)    <span class="cm">// Producer: читаємо</span>
+{
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; src.size(); i++)
+        dest.set(i, src.get(i));  <span class="cm">// читаємо src, пишемо dest</span>
+}
+
+<span class="cm">// Можна копіювати Dog → Animal list!</span>
+<span class="cls">List</span>&lt;<span class="cls">Dog</span>&gt;    dogs    = ...;
+<span class="cls">List</span>&lt;<span class="cls">Animal</span>&gt; animals = ...;
+<span class="cls">Collections</span>.copy(animals, dogs);  <span class="cm">// ОК</span></div>
+        <div class="callout callout-ok">
+          <strong>Коли нічого не підходить:</strong> якщо потрібно і читати і писати — використовуй invariant <code>List&lt;T&gt;</code> без wildcard.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: Практика -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-green">практика</span>
+        <h2>Практичні приклади PECS</h2>
+        <h3>Власний метод з PECS</h3>
+        <div class="code"><span class="cm">// Додає елементи з src в dest — PECS повністю</span>
+<span class="kw">public static</span> &lt;T&gt; <span class="kw">void</span> addAll(
+    <span class="cls">List</span>&lt;? <span class="kw">super</span> T&gt; dest,
+    <span class="cls">List</span>&lt;? <span class="kw">extends</span> T&gt; src) {
+    <span class="kw">for</span> (T item : src)
+        dest.add(item);
+}
+
+<span class="cm">// Тепер гнучко:</span>
+<span class="cls">List</span>&lt;<span class="cls">Integer</span>&gt; ints   = <span class="cls">List</span>.of(<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>);
+<span class="cls">List</span>&lt;<span class="cls">Number</span>&gt;  result = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();
+addAll(result, ints);  <span class="cm">// Integer → Number: ОК</span></div>
+      </div>
+      <div class="card">
+        <h3>Comparator і super</h3>
+        <div class="code"><span class="cm">// sort приймає Comparator&lt;? super T&gt;</span>
+<span class="cm">// бо Comparator споживає елементи для порівняння</span>
+<span class="kw">void</span> sort(<span class="cls">List</span>&lt;T&gt; list, <span class="cls">Comparator</span>&lt;? <span class="kw">super</span> T&gt; cmp)
+
+<span class="cm">// Можна сортувати List&lt;Dog&gt; компаратором для Animal</span>
+<span class="cls">Comparator</span>&lt;<span class="cls">Animal</span>&gt; byName = <span class="cls">Comparator</span>.comparing(<span class="cls">Animal</span>::name);
+<span class="cls">List</span>&lt;<span class="cls">Dog</span>&gt; dogs = ...;
+dogs.sort(byName);  <span class="cm">// ОК завдяки super</span></div>
+        <hr class="sep">
+        <h3>Unbounded wildcard: ?</h3>
+        <div class="code"><span class="cm">// Коли тип взагалі не важливий</span>
+<span class="kw">void</span> printSize(<span class="cls">List</span>&lt;?&gt; list) {
+    System.out.println(list.size());
+}
+<span class="cm">// ? = ? extends Object</span>
+<span class="cm">// Читаємо тільки як Object, не пишемо</span>
+
+<span class="cm">// Відрізняється від List&lt;Object&gt;:</span>
+printSize(<span class="cls">List</span>.of(<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>));  <span class="cm">// ОК</span>
+<span class="kw">void</span> bad(<span class="cls">List</span>&lt;<span class="cls">Object</span>&gt; l) {}
+bad(<span class="cls">List</span>.of(<span class="num">1</span>, <span class="num">2</span>));          <span class="cm">// COMPILE ERROR</span></div>
+      </div>
+    </div>
+
+    <!-- 5: Type Erasure -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-amber">type erasure</span>
+        <h2>Як працює type erasure</h2>
+        <p>Generics в Java — <strong>compile-time</strong> механізм. Компілятор перевіряє типи, а потім <em>стирає</em> їх — у байткоді залишається <code>Object</code> (або upper bound). JVM нічого не знає про <code>List&lt;String&gt;</code> — тільки <code>List</code>.</p>
+        <div class="compare">
+          <div class="compare-col">
+            <h4>source code</h4>
+            <div class="code" style="margin:0;font-size:11.5px"><span class="cls">List</span>&lt;<span class="cls">String</span>&gt; list =
+  <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();
+list.add(<span class="str">"hello"</span>);
+<span class="cls">String</span> s = list.get(<span class="num">0</span>);</div>
+          </div>
+          <div class="compare-col">
+            <h4>після erasure (bytecode)</h4>
+            <div class="code" style="margin:0;font-size:11.5px"><span class="cls">List</span> list =
+  <span class="kw">new</span> <span class="cls">ArrayList</span>();
+list.add(<span class="str">"hello"</span>);
+<span class="cls">String</span> s = (<span class="cls">String</span>) list.get(<span class="num">0</span>);
+<span class="cm">// ← cast вставляє компілятор</span></div>
+          </div>
+        </div>
+        <div class="callout callout-info">
+          Erasure — це ціна зворотньої сумісності. Generics з'явились у Java 5, а мільярди рядків коду з raw types мали продовжувати працювати.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Erasure з bounded type parameter</h3>
+        <div class="code"><span class="cm">// Source:</span>
+<span class="kw">class</span> <span class="cls">Box</span>&lt;T <span class="kw">extends</span> <span class="cls">Comparable</span>&lt;T&gt;&gt; {
+    T value;
+    <span class="kw">int</span> compareTo(<span class="cls">Box</span>&lt;T&gt; other) {
+        <span class="kw">return</span> value.compareTo(other.value);
+    }
+}
+
+<span class="cm">// Після erasure:</span>
+<span class="kw">class</span> <span class="cls">Box</span> {                  <span class="cm">// T → Comparable (upper bound)</span>
+    <span class="cls">Comparable</span> value;
+    <span class="kw">int</span> compareTo(<span class="cls">Box</span> other) {
+        <span class="kw">return</span> value.compareTo(other.value);
+    }
+}</div>
+      </div>
+    </div>
+
+    <!-- 6: Наслідки erasure -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-amber">наслідки</span>
+        <h2>Що ламає type erasure</h2>
+        <h3>1. Не можна перевірити тип параметра в runtime</h3>
+        <div class="code"><span class="cm">// COMPILE ERROR: illegal generic type for instanceof</span>
+<span class="kw">if</span> (list <span class="kw">instanceof</span> <span class="cls">List</span>&lt;<span class="cls">String</span>&gt;) { }
+
+<span class="cm">// ОК: unbounded wildcard</span>
+<span class="kw">if</span> (list <span class="kw">instanceof</span> <span class="cls">List</span>&lt;?&gt;) { }
+
+<span class="cm">// ОК в Java 16+ з pattern matching (але тільки raw)</span>
+<span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="cls">List</span>&lt;?&gt; l) {
+    <span class="cm">// l — List, не List&lt;String&gt;</span>
+}</div>
+        <hr class="sep">
+        <h3>2. Не можна створити масив generic типу</h3>
+        <div class="code"><span class="cm">// COMPILE ERROR</span>
+<span class="kw">new</span> <span class="cls">List</span>&lt;<span class="cls">String</span>&gt;[<span class="num">10</span>];
+<span class="kw">new</span> T[<span class="num">10</span>];
+
+<span class="cm">// Workaround: cast через raw type (unchecked warning)</span>
+<span class="ann">@SuppressWarnings</span>(<span class="str">"unchecked"</span>)
+<span class="cls">List</span>&lt;<span class="cls">String</span>&gt;[] arr = (<span class="cls">List</span>&lt;<span class="cls">String</span>&gt;[]) <span class="kw">new</span> <span class="cls">List</span>[<span class="num">10</span>];
+
+<span class="cm">// Краще: ArrayList замість масиву</span>
+<span class="cls">List</span>&lt;<span class="cls">List</span>&lt;<span class="cls">String</span>&gt;&gt; list = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();</div>
+      </div>
+      <div class="card">
+        <h3>3. Overloading по generic типу неможливий</h3>
+        <div class="code"><span class="cm">// COMPILE ERROR: erasure однакова</span>
+<span class="kw">void</span> process(<span class="cls">List</span>&lt;<span class="cls">String</span>&gt; list) {}
+<span class="kw">void</span> process(<span class="cls">List</span>&lt;<span class="cls">Integer</span>&gt; list) {}
+<span class="cm">// Обидва → process(List list) після erasure</span>
+
+<span class="cm">// Рішення: різні імена методів</span>
+<span class="kw">void</span> processStrings(<span class="cls">List</span>&lt;<span class="cls">String</span>&gt; list) {}
+<span class="kw">void</span> processIntegers(<span class="cls">List</span>&lt;<span class="cls">Integer</span>&gt; list) {}</div>
+        <hr class="sep">
+        <h3>4. Не можна використовувати T в static контексті</h3>
+        <div class="code"><span class="kw">class</span> <span class="cls">Box</span>&lt;T&gt; {
+    <span class="kw">static</span> T defaultValue;  <span class="cm">// COMPILE ERROR</span>
+    <span class="kw">static</span> T create() { }   <span class="cm">// COMPILE ERROR</span>
+    <span class="cm">// static shared між всіма Box&lt;?&gt;, T невідомий</span>
+}</div>
+      </div>
+    </div>
+
+    <!-- 7: Антипатерни -->
+    <div class="screen" id="s7">
+      <div class="card">
+        <span class="tag tag-red">антипатерни</span>
+        <h2>Типові помилки</h2>
+        <h3>1. Raw types</h3>
+        <div class="code"><span class="cm">// ПОГАНО: raw type — втрачаємо типову безпеку</span>
+<span class="cls">List</span> list = <span class="kw">new</span> <span class="cls">ArrayList</span>();
+list.add(<span class="str">"hello"</span>);
+list.add(<span class="num">42</span>);           <span class="cm">// компілюється без помилок!</span>
+<span class="cls">String</span> s = (<span class="cls">String</span>) list.get(<span class="num">1</span>);  <span class="cm">// ClassCastException runtime</span>
+
+<span class="cm">// ДОБРЕ: завжди вказуй тип параметр</span>
+<span class="cls">List</span>&lt;<span class="cls">String</span>&gt; list = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();</div>
+        <hr class="sep">
+        <h3>2. Неправильне застосування wildcard</h3>
+        <div class="code"><span class="cm">// ПОГАНО: invariant там де потрібен covariant</span>
+<span class="kw">double</span> sum(<span class="cls">List</span>&lt;<span class="cls">Number</span>&gt; list) { ... }
+sum(<span class="cls">List</span>.of(<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>));  <span class="cm">// COMPILE ERROR</span>
+
+<span class="cm">// ДОБРЕ: PECS — читаємо, тому extends</span>
+<span class="kw">double</span> sum(<span class="cls">List</span>&lt;? <span class="kw">extends</span> <span class="cls">Number</span>&gt; list) { ... }
+sum(<span class="cls">List</span>.of(<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>));  <span class="cm">// ОК</span></div>
+        <hr class="sep">
+        <h3>3. Heap pollution через varargs</h3>
+        <div class="code"><span class="ann">@SafeVarargs</span>  <span class="cm">// тільки якщо метод СПРАВДІ безпечний</span>
+<span class="kw">public static</span> &lt;T&gt; <span class="cls">List</span>&lt;T&gt; of(T... elements) {
+    <span class="kw">return</span> <span class="cls">Arrays</span>.asList(elements);
+}
+<span class="cm">// Без @SafeVarargs — unchecked warning на кожен виклик</span>
+<span class="cm">// Heap pollution: T[] може бути Object[] реально</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> поясни PECS через Collections.copy() — src producer (extends), dest consumer (super). Потім скажи що erasure означає: instanceof по generic неможливий, масив generic неможливий, overloading по generic неможливий. Це все що треба.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>equals / hashCode контракт — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;
+  --blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);
+  --green:#4eca8b;--green-bg:rgba(78,202,139,0.1);
+  --amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);
+  --red:#f05a5a;--red-bg:rgba(240,90,90,0.1);
+  --purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);
+  --teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);
+  --coral:#f07a5a;--coral-bg:rgba(240,122,90,0.1);
+  --font-body:'Syne',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+  --radius:10px;--radius-sm:6px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}
+.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--coral);background:var(--coral-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--coral)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}
+.tag-amber{background:var(--amber-bg);color:var(--amber)}
+.tag-red{background:var(--red-bg);color:var(--red)}
+.tag-green{background:var(--green-bg);color:var(--green)}
+.tag-coral{background:var(--coral-bg);color:var(--coral)}
+.tag-purple{background:var(--purple-bg);color:var(--purple)}
+.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}
+li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem}
+.metric{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.9rem 1rem}
+.metric .val{font-size:20px;font-weight:600;color:var(--text);font-family:var(--font-mono)}
+.metric .lbl{font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--font-mono)}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin:.75rem 0}
+.compare-col{background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);padding:.75rem 1rem}
+.compare-col h4{font-size:12px;font-weight:500;color:var(--muted);margin-bottom:.5rem;font-family:var(--font-mono)}
+.compare-col.good{border-color:rgba(78,202,139,0.3)}
+.compare-col.bad{border-color:rgba(240,90,90,0.25)}
+.rule-list{display:flex;flex-direction:column;gap:.5rem;margin-top:.75rem}
+.rule{display:flex;gap:.75rem;align-items:flex-start;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.7rem 1rem}
+.rule-icon{font-family:var(--font-mono);font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;flex-shrink:0;margin-top:1px}
+.rule-icon.ok{background:var(--green-bg);color:var(--green)}
+.rule-icon.warn{background:var(--amber-bg);color:var(--amber)}
+.rule-text{font-size:13px;color:#9ea3b0;line-height:1.6}
+.rule-text strong{color:var(--text)}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>equals / hashCode контракт</h1>
+  <span class="header-tag">Java</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Контракт</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Навіщо це взагалі</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>equals — 5 правил</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>hashCode — 3 правила</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Зв'язок між ними</div>
+    <div class="sidebar-section">Реалізація</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Правильна реалізація</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Підводні камені</div>
+    <div class="sidebar-section">Нюанси</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Спадкування</div>
+    <div class="nav-item" onclick="go(7)"><span class="nav-dot"></span>Антипатерни</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-coral">контекст</span>
+        <h2>Навіщо це взагалі</h2>
+        <p>В Java кожен об'єкт успадковує <code>equals()</code> і <code>hashCode()</code> від <code>Object</code>. За замовчуванням вони працюють по <strong>ідентичності</strong> (адреса в пам'яті). Але колекції типу <code>HashMap</code>, <code>HashSet</code>, <code>LinkedHashSet</code> потребують <strong>семантичної рівності</strong>.</p>
+        <div class="compare">
+          <div class="compare-col bad">
+            <h4>Object за замовчуванням</h4>
+            <div class="code" style="margin:0;font-size:11.5px"><span class="cm">// equals: ==</span>
+<span class="kw">new</span> <span class="cls">Point</span>(<span class="num">1</span>,<span class="num">2</span>).equals(
+  <span class="kw">new</span> <span class="cls">Point</span>(<span class="num">1</span>,<span class="num">2</span>))
+<span class="cm">// → false (різні об'єкти!)</span>
+
+<span class="cm">// hashCode: System.identityHashCode</span>
+<span class="cm">// → різні значення</span></div>
+          </div>
+          <div class="compare-col good">
+            <h4>після перевизначення</h4>
+            <div class="code" style="margin:0;font-size:11.5px"><span class="cm">// equals: по полях</span>
+<span class="kw">new</span> <span class="cls">Point</span>(<span class="num">1</span>,<span class="num">2</span>).equals(
+  <span class="kw">new</span> <span class="cls">Point</span>(<span class="num">1</span>,<span class="num">2</span>))
+<span class="cm">// → true</span>
+
+<span class="cm">// hashCode: по тих самих полях</span>
+<span class="cm">// → однакові значення</span></div>
+          </div>
+        </div>
+        <div class="callout callout-red" style="margin-top:.75rem">
+          <strong>Наслідок порушення:</strong> <code>set.contains(new Point(1,2))</code> повертає <code>false</code>, навіть якщо такий Point вже є в Set — бо шукаємо не в тому бакеті.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Де використовуються</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Колекція</th><th>equals()</th><th>hashCode()</th></tr></thead>
+            <tbody>
+              <tr><td>HashMap / HashSet</td><td class="td-good">так</td><td class="td-good">так</td></tr>
+              <tr><td>LinkedHashMap / LinkedHashSet</td><td class="td-good">так</td><td class="td-good">так</td></tr>
+              <tr><td>TreeMap / TreeSet</td><td class="td-warn">тільки через compareTo</td><td class="td-bad">ні</td></tr>
+              <tr><td>ArrayList / LinkedList</td><td class="td-good">так (contains, remove)</td><td class="td-bad">ні</td></tr>
+              <tr><td>Arrays.equals()</td><td class="td-good">так</td><td class="td-bad">ні</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1 -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-coral">контракт</span>
+        <h2>equals() — 5 правил</h2>
+        <p>Контракт визначений у Javadoc <code>Object.equals()</code>. Порушення будь-якого правила ламає поведінку колекцій.</p>
+        <div class="rule-list">
+          <div class="rule">
+            <span class="rule-icon ok">рефлексивність</span>
+            <div class="rule-text"><strong>x.equals(x) == true</strong> завжди. Об'єкт рівний сам собі.</div>
+          </div>
+          <div class="rule">
+            <span class="rule-icon ok">симетричність</span>
+            <div class="rule-text"><strong>x.equals(y) == y.equals(x)</strong>. Якщо x рівний y — то y рівний x.</div>
+          </div>
+          <div class="rule">
+            <span class="rule-icon ok">транзитивність</span>
+            <div class="rule-text"><strong>x.equals(y) && y.equals(z) → x.equals(z)</strong>. Якщо x=y і y=z, то x=z.</div>
+          </div>
+          <div class="rule">
+            <span class="rule-icon ok">консистентність</span>
+            <div class="rule-text"><strong>Повторні виклики дають той самий результат</strong> поки поля не змінились.</div>
+          </div>
+          <div class="rule">
+            <span class="rule-icon warn">null</span>
+            <div class="rule-text"><strong>x.equals(null) == false</strong> завжди. Ніколи не кидати NPE при порівнянні з null.</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Де найчастіше ламається симетричність</h3>
+        <p>Типова проблема: клас <code>A</code> знає про клас <code>B</code> і вважає їх рівними, але <code>B</code> не знає про <code>A</code>.</p>
+        <div class="code"><span class="kw">class</span> <span class="cls">CaseInsensitiveString</span> {
+    <span class="kw">private final</span> <span class="cls">String</span> s;
+
+    <span class="ann">@Override</span>
+    <span class="kw">public boolean</span> equals(<span class="cls">Object</span> o) {
+        <span class="kw">if</span> (o <span class="kw">instanceof</span> <span class="cls">CaseInsensitiveString</span> c)
+            <span class="kw">return</span> s.equalsIgnoreCase(c.s);
+        <span class="cm">// ПОРУШЕННЯ: порівнює з String теж!</span>
+        <span class="kw">if</span> (o <span class="kw">instanceof</span> <span class="cls">String</span> str)
+            <span class="kw">return</span> s.equalsIgnoreCase(str);
+        <span class="kw">return false</span>;
+    }
+}
+<span class="cm">// cis.equals("hello") → true</span>
+<span class="cm">// "hello".equals(cis) → false ← порушення!</span></div>
+        <div class="callout callout-warn">
+          <strong>Правило Блоха:</strong> equals між різними типами практично завжди порушує симетричність або транзитивність. Порівнюй тільки об'єкти одного типу.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-coral">контракт</span>
+        <h2>hashCode() — 3 правила</h2>
+        <div class="rule-list">
+          <div class="rule">
+            <span class="rule-icon ok">консистентність</span>
+            <div class="rule-text">Повторні виклики на незмінному об'єкті повертають <strong>однакове значення</strong> протягом одного запуску JVM.</div>
+          </div>
+          <div class="rule">
+            <span class="rule-icon ok">equals → hash</span>
+            <div class="rule-text">Якщо <strong>x.equals(y) == true</strong>, то <strong>x.hashCode() == y.hashCode()</strong>. Це обов'язкова умова.</div>
+          </div>
+          <div class="rule">
+            <span class="rule-icon warn">hash → equals</span>
+            <div class="rule-text">Якщо x.hashCode() == y.hashCode() — це <strong>не означає</strong> x.equals(y). Колізії допустимі, просто погіршують продуктивність.</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Що відбувається при порушенні</h3>
+        <div class="code"><span class="cm">// Клас з equals але без hashCode</span>
+<span class="kw">class</span> <span class="cls">BadKey</span> {
+    <span class="kw">int</span> id;
+    <span class="ann">@Override</span>
+    <span class="kw">public boolean</span> equals(<span class="cls">Object</span> o) {
+        <span class="kw">return</span> o <span class="kw">instanceof</span> <span class="cls">BadKey</span> k && k.id == id;
+    }
+    <span class="cm">// hashCode() не перевизначений!</span>
+}
+
+<span class="kw">var</span> map = <span class="kw">new</span> <span class="cls">HashMap</span>&lt;<span class="cls">BadKey</span>, <span class="cls">String</span>&gt;();
+<span class="kw">var</span> k1 = <span class="kw">new</span> <span class="cls">BadKey</span>(); k1.id = <span class="num">42</span>;
+map.put(k1, <span class="str">"hello"</span>);
+
+<span class="kw">var</span> k2 = <span class="kw">new</span> <span class="cls">BadKey</span>(); k2.id = <span class="num">42</span>;
+map.get(k2);  <span class="cm">// → null  ← ЗАГУБЛЕНО!</span>
+<span class="cm">// k1.equals(k2) == true, але різні бакети</span></div>
+        <div class="callout callout-red">
+          <strong>IntelliJ / IDE завжди попередить</strong> якщо перевизначено лише один з двох методів. Ніколи не ігноруй це попередження.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-blue">механіка</span>
+        <h2>Зв'язок між equals і hashCode</h2>
+        <p>HashMap шукає ключ у два кроки: спочатку знаходить бакет по <code>hashCode()</code>, потім перебирає ланцюжок через <code>equals()</code>.</p>
+
+        <svg width="100%" viewBox="0 0 620 230" style="margin:.75rem 0">
+          <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#4a4d57" stroke-width="1.5" stroke-linecap="round"/></marker></defs>
+          <!-- Step 1 -->
+          <rect x="20" y="20" width="140" height="44" rx="8" fill="#1a1420" stroke="#a78bf6" stroke-width="0.8"/>
+          <text x="90" y="38" text-anchor="middle" font-size="12" fill="#a78bf6" font-family="'Syne',sans-serif" font-weight="500">map.get(key)</text>
+          <text x="90" y="54" text-anchor="middle" font-size="11" fill="#7a7d87" font-family="'JetBrains Mono',monospace">object</text>
+          <!-- Step 2 -->
+          <rect x="220" y="20" width="170" height="44" rx="8" fill="#16181c" stroke="#5b9cf6" stroke-width="0.8"/>
+          <text x="305" y="38" text-anchor="middle" font-size="12" fill="#5b9cf6" font-family="'Syne',sans-serif" font-weight="500">hash(key)</text>
+          <text x="305" y="54" text-anchor="middle" font-size="11" fill="#7a7d87" font-family="'JetBrains Mono',monospace">знайти бакет</text>
+          <line x1="160" y1="42" x2="218" y2="42" stroke="#4a4d57" stroke-width="0.8" marker-end="url(#ar)"/>
+          <text x="189" y="36" text-anchor="middle" font-size="10" fill="#4a4d57" font-family="'Syne',sans-serif">hashCode()</text>
+          <!-- Step 3 -->
+          <rect x="220" y="110" width="170" height="44" rx="8" fill="#16181c" stroke="#4eca8b" stroke-width="0.8"/>
+          <text x="305" y="128" text-anchor="middle" font-size="12" fill="#4eca8b" font-family="'Syne',sans-serif" font-weight="500">перебрати ланцюжок</text>
+          <text x="305" y="144" text-anchor="middle" font-size="11" fill="#7a7d87" font-family="'JetBrains Mono',monospace">знайти вузол</text>
+          <line x1="305" y1="64" x2="305" y2="108" stroke="#4a4d57" stroke-width="0.8" marker-end="url(#ar)"/>
+          <text x="330" y="92" font-size="10" fill="#4a4d57" font-family="'Syne',sans-serif">перейти в бакет</text>
+          <!-- Step 4 ok -->
+          <rect x="460" y="90" width="130" height="36" rx="8" fill="#0e1a18" stroke="#4eca8b" stroke-width="0.8"/>
+          <text x="525" y="112" text-anchor="middle" font-size="12" fill="#4eca8b" font-family="'Syne',sans-serif">знайдено</text>
+          <!-- Step 4 fail -->
+          <rect x="460" y="142" width="130" height="36" rx="8" fill="#1a0e0e" stroke="#f05a5a" stroke-width="0.8"/>
+          <text x="525" y="164" text-anchor="middle" font-size="12" fill="#f05a5a" font-family="'Syne',sans-serif">null</text>
+          <line x1="390" y1="128" x2="458" y2="110" stroke="#4a4d57" stroke-width="0.8" marker-end="url(#ar)"/>
+          <line x1="390" y1="138" x2="458" y2="158" stroke="#4a4d57" stroke-width="0.8" marker-end="url(#ar)"/>
+          <text x="424" y="107" font-size="10" fill="#4eca8b" font-family="'Syne',sans-serif">equals true</text>
+          <text x="424" y="158" font-size="10" fill="#f05a5a" font-family="'Syne',sans-serif">equals false</text>
+          <!-- legend -->
+          <text x="20" y="210" font-size="11" fill="#4a4d57" font-family="'Syne',sans-serif">hashCode() → вибір бакету    equals() → перевірка конкретного вузла</text>
+        </svg>
+
+        <div class="callout callout-info">
+          <strong>Ключове:</strong> однаковий <code>hashCode</code> → один бакет → <code>equals()</code> порівнює вузли в ланцюжку. Різний <code>hashCode</code> → різний бакет → <code>equals()</code> навіть не викликається.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-green">реалізація</span>
+        <h2>Правильна реалізація</h2>
+        <p>Сучасний Java-стиль — використовувати <code>Objects.equals()</code> і <code>Objects.hash()</code>. Для record це генерується автоматично.</p>
+        <div class="code"><span class="kw">class</span> <span class="cls">Point</span> {
+    <span class="kw">private final int</span> x, y;
+
+    <span class="ann">@Override</span>
+    <span class="kw">public boolean</span> equals(<span class="cls">Object</span> o) {
+        <span class="kw">if</span> (<span class="kw">this</span> == o) <span class="kw">return true</span>;         <span class="cm">// 1. identity fast-path</span>
+        <span class="kw">if</span> (!(o <span class="kw">instanceof</span> <span class="cls">Point</span> p)) <span class="kw">return false</span>; <span class="cm">// 2. тип + null</span>
+        <span class="kw">return</span> x == p.x && y == p.y;        <span class="cm">// 3. поля</span>
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public int</span> hashCode() {
+        <span class="kw">return</span> <span class="cls">Objects</span>.hash(x, y);           <span class="cm">// ті самі поля!</span>
+    }
+}</div>
+      </div>
+      <div class="card">
+        <h3>Record — автоматично</h3>
+        <div class="code"><span class="cm">// Record генерує коректний equals + hashCode сам</span>
+<span class="kw">record</span> <span class="cls">Point</span>(<span class="kw">int</span> x, <span class="kw">int</span> y) {}
+
+<span class="kw">new</span> <span class="cls">Point</span>(<span class="num">1</span>, <span class="num">2</span>).equals(<span class="kw">new</span> <span class="cls">Point</span>(<span class="num">1</span>, <span class="num">2</span>)) <span class="cm">// → true</span></div>
+        <hr class="sep">
+        <h3>Objects.hash() під капотом</h3>
+        <div class="code"><span class="cm">// Objects.hash(x, y) розкривається в:</span>
+<span class="cls">Arrays</span>.hashCode(<span class="kw">new</span> <span class="cls">Object</span>[]{x, y})
+<span class="cm">// ≈ 31 * (31 * 1 + x) + y</span>
+
+<span class="cm">// Ручний варіант (швидше, без boxing):</span>
+<span class="kw">int</span> result = <span class="num">31</span> * x + y;  <span class="cm">// для int полів</span></div>
+        <div class="callout callout-ok">
+          <strong>Правило:</strong> у <code>equals()</code> і <code>hashCode()</code> використовуй <strong>рівно ті самі поля</strong>. Пропустив поле в hashCode — отримаєш надмірні колізії. Пропустив у equals — отримаєш неправильну рівність.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-amber">нюанси</span>
+        <h2>Підводні камені</h2>
+        <h3>1. Mutable ключі в HashMap</h3>
+        <p>Якщо змінити поле об'єкта-ключа <em>після</em> вставки — <code>hashCode()</code> зміниться, і ключ "загубиться" в іншому бакеті.</p>
+        <div class="code"><span class="kw">var</span> key = <span class="kw">new</span> <span class="cls">Point</span>(<span class="num">1</span>, <span class="num">2</span>);
+map.put(key, <span class="str">"value"</span>);
+
+key.x = <span class="num">99</span>;               <span class="cm">// поле змінилось!</span>
+map.get(key);             <span class="cm">// → null  ← загублено</span>
+map.containsKey(key);     <span class="cm">// → false</span>
+<span class="cm">// але значення досі є у старому бакеті</span></div>
+        <div class="callout callout-warn">Ключі HashMap мають бути <strong>immutable</strong> або принаймні їх поля, що беруть участь у hashCode/equals, не мають змінюватись після вставки.</div>
+      </div>
+      <div class="card">
+        <h3>2. Кешування hashCode</h3>
+        <p>Для immutable класів з дорогим hashCode (наприклад, <code>String</code>) — кешуємо результат.</p>
+        <div class="code"><span class="kw">class</span> <span class="cls">ImmutableKey</span> {
+    <span class="kw">private final</span> <span class="cls">String</span> value;
+    <span class="kw">private int</span> hash;  <span class="cm">// кеш, 0 = не обчислено</span>
+
+    <span class="ann">@Override</span>
+    <span class="kw">public int</span> hashCode() {
+        <span class="kw">int</span> h = hash;
+        <span class="kw">if</span> (h == <span class="num">0</span> && value != <span class="kw">null</span>) {
+            h = value.hashCode();
+            hash = h;  <span class="cm">// racy but safe для int</span>
+        }
+        <span class="kw">return</span> h;
+    }
+}</div>
+        <hr class="sep">
+        <h3>3. Float і double</h3>
+        <div class="code"><span class="cm">// equals: використовуй compareTo для float/double</span>
+<span class="cls">Double</span>.compare(a.val, b.val) == <span class="num">0</span>  <span class="cm">// не ==</span>
+
+<span class="cm">// hashCode: спеціальні методи</span>
+<span class="cls">Double</span>.hashCode(val)   <span class="cm">// або Double.doubleToLongBits</span>
+<span class="cls">Float</span>.hashCode(val)    <span class="cm">// або Float.floatToIntBits</span>
+
+<span class="cm">// Бо: Double.NaN != Double.NaN, але</span>
+<span class="cm">// Double.compare(NaN, NaN) == 0</span></div>
+      </div>
+    </div>
+
+    <!-- 6 -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-purple">спадкування</span>
+        <h2>equals і спадкування — проблема транзитивності</h2>
+        <p>Неможливо розширити instantiable клас, додати значуще поле і при цьому зберегти контракт equals. Це фундаментальна проблема.</p>
+        <div class="code"><span class="kw">class</span> <span class="cls">Point</span> { <span class="kw">int</span> x, y; }
+<span class="kw">class</span> <span class="cls">ColorPoint</span> <span class="kw">extends</span> <span class="cls">Point</span> { <span class="cls">Color</span> color; }
+
+<span class="cls">Point</span> p = <span class="kw">new</span> <span class="cls">Point</span>(<span class="num">1</span>, <span class="num">2</span>);
+<span class="cls">ColorPoint</span> cp = <span class="kw">new</span> <span class="cls">ColorPoint</span>(<span class="num">1</span>, <span class="num">2</span>, RED);
+
+<span class="cm">// Варіант A: cp.equals(p) перевіряє колір</span>
+cp.equals(p)  <span class="cm">// false (немає кольору)</span>
+p.equals(cp)  <span class="cm">// true  ← порушення симетричності!</span>
+
+<span class="cm">// Варіант B: ігнорувати колір при mixed compare</span>
+cp.equals(p)  <span class="cm">// true</span>
+p.equals(cp)  <span class="cm">// true</span>
+<span class="cm">// але тоді: cp1.equals(p) && p.equals(cp2)</span>
+<span class="cm">// cp1(RED) і cp2(BLUE) — порушення транзитивності!</span></div>
+      </div>
+      <div class="card">
+        <h3>Рішення: composition замість inheritance</h3>
+        <div class="code"><span class="cm">// Замість extends Point — містить Point</span>
+<span class="kw">class</span> <span class="cls">ColorPoint</span> {
+    <span class="kw">private final</span> <span class="cls">Point</span> point;   <span class="cm">// composition</span>
+    <span class="kw">private final</span> <span class="cls">Color</span> color;
+
+    <span class="kw">public</span> <span class="cls">Point</span> asPoint() { <span class="kw">return</span> point; }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public boolean</span> equals(<span class="cls">Object</span> o) {
+        <span class="kw">if</span> (!(o <span class="kw">instanceof</span> <span class="cls">ColorPoint</span> cp)) <span class="kw">return false</span>;
+        <span class="kw">return</span> cp.point.equals(point)
+            && cp.color.equals(color);  <span class="cm">// чисто</span>
+    }
+}</div>
+        <div class="callout callout-info">
+          Саме тому <code>java.sql.Timestamp</code> (extends <code>java.util.Date</code>) порушує контракт equals — і Javadoc явно попереджає не змішувати їх у колекціях.
+        </div>
+      </div>
+    </div>
+
+    <!-- 7 -->
+    <div class="screen" id="s7">
+      <div class="card">
+        <span class="tag tag-red">антипатерни</span>
+        <h2>Типові помилки</h2>
+        <h3>1. getClass() замість instanceof</h3>
+        <div class="code"><span class="cm">// ПОГАНО: ламає Liskov — підклас не може бути рівним</span>
+<span class="ann">@Override</span>
+<span class="kw">public boolean</span> equals(<span class="cls">Object</span> o) {
+    <span class="kw">if</span> (o == <span class="kw">null</span> || getClass() != o.getClass())
+        <span class="kw">return false</span>;  <span class="cm">// Point і ColorPoint завжди різні</span>
+    ...
+}
+
+<span class="cm">// ДОБРЕ: instanceof дозволяє поліморфізм</span>
+<span class="kw">if</span> (!(o <span class="kw">instanceof</span> <span class="cls">Point</span> p)) <span class="kw">return false</span>;</div>
+        <hr class="sep">
+        <h3>2. equals але без hashCode</h3>
+        <div class="code"><span class="cm">// HashSet і HashMap стають непередбачуваними</span>
+<span class="kw">var</span> set = <span class="kw">new</span> <span class="cls">HashSet</span>&lt;<span class="cls">Point</span>&gt;();
+set.add(<span class="kw">new</span> <span class="cls">Point</span>(<span class="num">1</span>, <span class="num">2</span>));
+set.contains(<span class="kw">new</span> <span class="cls">Point</span>(<span class="num">1</span>, <span class="num">2</span>));  <span class="cm">// → false!</span></div>
+        <hr class="sep">
+        <h3>3. hashCode повертає константу</h3>
+        <div class="code"><span class="cm">// "Правильно" з точки зору контракту, але...</span>
+<span class="ann">@Override</span>
+<span class="kw">public int</span> hashCode() { <span class="kw">return</span> <span class="num">42</span>; }
+<span class="cm">// Всі об'єкти в один бакет → O(n) HashMap</span>
+<span class="cm">// Технічно не порушення, але катастрофа для perf</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> якщо запитають про equals/hashCode — завжди згадай контракт (5 правил + 3 правила), mutable keys у HashMap, і проблему спадкування з транзитивністю. Це три кути, які відрізняють підготовлену людину.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>
