@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thread lifecycle, volatile, happens-before — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--red);background:var(--red-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--red)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.states{display:flex;flex-direction:column;gap:.5rem;margin:.75rem 0}
+.state-row{display:flex;align-items:center;gap:.75rem}
+.state-box{font-size:12px;font-family:var(--font-mono);padding:5px 12px;border-radius:6px;border:1px solid var(--border);min-width:120px;text-align:center;font-weight:500}
+.state-new{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
+.state-run{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+.state-block{background:var(--amber-bg);border-color:var(--amber);color:var(--amber)}
+.state-wait{background:rgba(167,139,246,0.15);border-color:var(--purple);color:var(--purple)}
+.state-dead{background:var(--bg3);border-color:var(--hint);color:var(--muted)}
+.state-arrow{color:var(--hint);font-size:12px;font-family:var(--font-mono)}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Thread lifecycle, volatile, happens-before</h1>
+  <span class="header-tag">Concurrency</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Thread</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Стани потоку</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Створення потоків</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Daemon threads</div>
+    <div class="sidebar-section">JMM</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Visibility проблема</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>volatile</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>happens-before</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Антипатерни</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0: states -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-red">lifecycle</span>
+        <h2>Стани потоку (Thread.State)</h2>
+        <div class="states">
+          <div class="state-row">
+            <span class="state-box state-new">NEW</span>
+            <span class="state-arrow">→ start() →</span>
+            <span class="state-box state-run">RUNNABLE</span>
+          </div>
+          <div class="state-row" style="padding-left:1rem">
+            <span class="state-arrow">RUNNABLE →</span>
+            <span class="state-box state-block">BLOCKED</span>
+            <span class="state-arrow">→ lock acquired →</span>
+            <span class="state-box state-run">RUNNABLE</span>
+          </div>
+          <div class="state-row" style="padding-left:1rem">
+            <span class="state-arrow">RUNNABLE →</span>
+            <span class="state-box state-wait">WAITING</span>
+            <span class="state-arrow">→ notify/join →</span>
+            <span class="state-box state-run">RUNNABLE</span>
+          </div>
+          <div class="state-row" style="padding-left:1rem">
+            <span class="state-arrow">RUNNABLE →</span>
+            <span class="state-box state-wait">TIMED_WAITING</span>
+            <span class="state-arrow">→ timeout →</span>
+            <span class="state-box state-run">RUNNABLE</span>
+          </div>
+          <div class="state-row">
+            <span class="state-box state-run">RUNNABLE</span>
+            <span class="state-arrow">→ run() returns →</span>
+            <span class="state-box state-dead">TERMINATED</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Що переводить у кожен стан</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Стан</th><th>Що викликає</th></tr></thead>
+            <tbody>
+              <tr><td><code>NEW</code></td><td>new Thread() — ще не запущений</td></tr>
+              <tr><td><code>RUNNABLE</code></td><td>thread.start(), повернення з BLOCKED/WAITING</td></tr>
+              <tr><td><code>BLOCKED</code></td><td>чекає на synchronized lock зайнятий іншим потоком</td></tr>
+              <tr><td><code>WAITING</code></td><td>Object.wait(), Thread.join(), LockSupport.park()</td></tr>
+              <tr><td><code>TIMED_WAITING</code></td><td>Thread.sleep(n), wait(n), join(n), parkNanos()</td></tr>
+              <tr><td><code>TERMINATED</code></td><td>run() завершився нормально або через exception</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout-info">
+          <strong>RUNNABLE ≠ реально виконується.</strong> JVM позначає потік RUNNABLE як тільки він готовий — але OS scheduler вирішує коли насправді дати йому CPU. Потік може бути RUNNABLE і чекати на CPU.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: creation -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-blue">створення</span>
+        <h2>Способи створити потік</h2>
+        <div class="code"><span class="cm">// 1. Extends Thread (не рекомендується)</span>
+<span class="kw">class</span> <span class="cls">MyThread</span> <span class="kw">extends</span> <span class="cls">Thread</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> run() { System.out.println(<span class="str">"running"</span>); }
+}
+<span class="kw">new</span> <span class="cls">MyThread</span>().start();
+
+<span class="cm">// 2. Implements Runnable (кращий варіант)</span>
+<span class="cls">Thread</span> t = <span class="kw">new</span> <span class="cls">Thread</span>(() -> System.out.println(<span class="str">"running"</span>));
+t.start();
+
+<span class="cm">// 3. ExecutorService (правильний варіант у продакшн)</span>
+<span class="cls">ExecutorService</span> exec = <span class="cls">Executors</span>.newFixedThreadPool(<span class="num">4</span>);
+exec.submit(() -> System.out.println(<span class="str">"running"</span>));
+
+<span class="cm">// 4. Virtual Thread (Java 21)</span>
+<span class="cls">Thread</span>.ofVirtual().start(() -> System.out.println(<span class="str">"virtual"</span>));</div>
+        <div class="callout callout-warn">
+          <strong>Ніколи не викликай run() напряму</strong> — це просто виклик методу в поточному потоці. Тільки <code>start()</code> створює новий потік. Це класичне питання-пастка на співбесіді.
+        </div>
+      </div>
+      <div class="card">
+        <h3>interrupt() — кооперативне зупинення</h3>
+        <div class="code"><span class="cm">// interrupt() встановлює прапор — не зупиняє одразу</span>
+<span class="cls">Thread</span> t = <span class="kw">new</span> <span class="cls">Thread</span>(() -> {
+    <span class="kw">while</span> (!<span class="cls">Thread</span>.currentThread().isInterrupted()) {
+        doWork();
+    }
+    <span class="cm">// cleanup</span>
+});
+t.interrupt(); <span class="cm">// встановлює interrupted flag</span>
+
+<span class="cm">// sleep/wait кидають InterruptedException при interrupted</span>
+<span class="kw">try</span> {
+    <span class="cls">Thread</span>.sleep(<span class="num">1000</span>);
+} <span class="kw">catch</span> (<span class="cls">InterruptedException</span> e) {
+    <span class="cls">Thread</span>.currentThread().interrupt(); <span class="cm">// відновлюємо прапор!</span>
+    <span class="kw">return</span>;
+}</div>
+      </div>
+    </div>
+
+    <!-- 2: daemon -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-gray">daemon</span>
+        <h2>Daemon threads</h2>
+        <p>JVM завершується коли всі non-daemon потоки завершились. Daemon потоки — фонові сервіси що не блокують завершення JVM. GC, finalizer — daemon.</p>
+        <div class="code"><span class="cls">Thread</span> t = <span class="kw">new</span> <span class="cls">Thread</span>(() -> {
+    <span class="kw">while</span> (<span class="kw">true</span>) { monitorMetrics(); sleep(<span class="num">1000</span>); }
+});
+t.setDaemon(<span class="kw">true</span>);  <span class="cm">// до start()!</span>
+t.start();
+<span class="cm">// JVM завершиться не чекаючи цього потоку</span>
+
+<span class="cm">// Virtual threads — завжди daemon</span>
+<span class="cls">Thread</span>.ofVirtual().start(task); <span class="cm">// daemon by default</span></div>
+        <div class="callout callout-warn">
+          <code>setDaemon()</code> треба викликати <strong>до</strong> <code>start()</code>. Після запуску — <code>IllegalThreadStateException</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: visibility -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-red">JMM</span>
+        <h2>Visibility проблема</h2>
+        <p>Кожен потік може кешувати змінні у своєму CPU cache або регістрах. Без явної синхронізації один потік може не побачити зміни зроблені іншим.</p>
+        <div class="code"><span class="cm">// Класичний приклад: нескінченний цикл!</span>
+<span class="kw">class</span> <span class="cls">StopTask</span> <span class="kw">implements</span> <span class="cls">Runnable</span> {
+    <span class="kw">private boolean</span> stopped = <span class="kw">false</span>; <span class="cm">// не volatile!</span>
+
+    <span class="kw">public void</span> stop() { stopped = <span class="kw">true</span>; }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> run() {
+        <span class="kw">while</span> (!stopped) { <span class="cm">// може читати кешоване false вічно</span>
+            doWork();
+        }
+    }
+}
+<span class="cm">// Потік може ніколи не побачити stopped = true!</span>
+<span class="cm">// JIT може навіть оптимізувати цикл в while(true)</span></div>
+        <div class="callout callout-red">
+          Це не баг JVM — це специфікація. CPU і компілятор мають право переупорядковувати і кешувати операції для оптимізації. Java Memory Model визначає <strong>коли</strong> зміни гарантовано видимі.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: volatile -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-amber">volatile</span>
+        <h2>volatile</h2>
+        <p>Гарантує два ефекти: <strong>visibility</strong> (запис видимий усім потокам одразу) і <strong>ordering</strong> (заборона переупорядкування через memory barrier).</p>
+        <div class="code"><span class="kw">class</span> <span class="cls">StopTask</span> <span class="kw">implements</span> <span class="cls">Runnable</span> {
+    <span class="kw">private volatile boolean</span> stopped = <span class="kw">false</span>;
+
+    <span class="kw">public void</span> stop() { stopped = <span class="kw">true</span>; } <span class="cm">// запис у main memory</span>
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> run() {
+        <span class="kw">while</span> (!stopped) { <span class="cm">// кожен раз читає з main memory</span>
+            doWork();
+        }
+    }
+}</div>
+      </div>
+      <div class="card">
+        <h3>Що volatile дає і що ні</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th></th><th>volatile</th><th>synchronized</th></tr></thead>
+            <tbody>
+              <tr><td>Visibility</td><td class="td-good">так</td><td class="td-good">так</td></tr>
+              <tr><td>Ordering</td><td class="td-good">так</td><td class="td-good">так</td></tr>
+              <tr><td>Atomicity</td><td class="td-bad">ні</td><td class="td-good">так</td></tr>
+              <tr><td>Mutual exclusion</td><td class="td-bad">ні</td><td class="td-good">так</td></tr>
+              <tr><td>Performance</td><td class="td-good">легший</td><td class="td-warn">важчий</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code" style="margin-top:.75rem"><span class="cm">// volatile НЕ вирішує race condition на ++</span>
+<span class="kw">volatile int</span> counter = <span class="num">0</span>;
+counter++;  <span class="cm">// read-modify-write: НЕ атомарна операція!</span>
+<span class="cm">// Два потоки можуть прочитати одночасно і записати однакове</span>
+
+<span class="cm">// Для лічильників — AtomicInteger</span>
+<span class="cls">AtomicInteger</span> counter = <span class="kw">new</span> <span class="cls">AtomicInteger</span>();
+counter.incrementAndGet(); <span class="cm">// атомарно</span></div>
+        <div class="callout callout-info">
+          <strong>Коли volatile достатньо:</strong> один потік пише, інші читають. Або прапори (boolean). Якщо кілька потоків пишуть — потрібен synchronized або Atomic*.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: happens-before -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-teal">JMM</span>
+        <h2>happens-before</h2>
+        <p>Happens-before — відношення між операціями. Якщо A happens-before B, то всі ефекти A видимі B. Це єдиний спосіб гарантувати visibility між потоками.</p>
+        <div class="code"><span class="cm">// Правила happens-before в Java:</span>
+
+<span class="cm">// 1. Program order: в одному потоці</span>
+<span class="cm">//    кожна операція happens-before наступної</span>
+
+<span class="cm">// 2. Monitor lock: unlock happens-before lock того ж монітора</span>
+<span class="kw">synchronized</span>(lock) { x = <span class="num">1</span>; }  <span class="cm">// unlock</span>
+<span class="kw">synchronized</span>(lock) { y = x; }  <span class="cm">// lock — бачить x=1</span>
+
+<span class="cm">// 3. volatile: запис volatile happens-before читання</span>
+<span class="kw">volatile int</span> v;
+v = <span class="num">42</span>;    <span class="cm">// write</span>
+<span class="kw">int</span> r = v;  <span class="cm">// read — гарантовано бачить 42</span>
+
+<span class="cm">// 4. Thread start: все до start() happens-before run()</span>
+data = prepare();
+thread.start();     <span class="cm">// thread бачить data</span>
+
+<span class="cm">// 5. Thread join: run() happens-before join() повертає</span>
+thread.join();      <span class="cm">// ми бачимо все що thread зробив</span>
+readResult();
+
+<span class="cm">// 6. Transitivity: A hb B, B hb C → A hb C</span></div>
+      </div>
+      <div class="card">
+        <h3>Практичний приклад: safe publication</h3>
+        <div class="code"><span class="cm">// БЕЗ happens-before: небезпечна публікація</span>
+<span class="cls">Object</span> obj;
+<span class="cm">// Thread 1:</span>
+obj = <span class="kw">new</span> <span class="cls">Object</span>();  <span class="cm">// Thread 2 може побачити частково ініціалізований!</span>
+
+<span class="cm">// З volatile: safe publication</span>
+<span class="kw">volatile</span> <span class="cls">Object</span> obj;
+obj = <span class="kw">new</span> <span class="cls">Object</span>();  <span class="cm">// запис volatile — HB для читачів</span>
+
+<span class="cm">// З synchronized: safe publication</span>
+<span class="kw">synchronized</span>(this) { obj = <span class="kw">new</span> <span class="cls">Object</span>(); }
+
+<span class="cm">// final поля — безпечні без синхронізації після конструктора</span>
+<span class="kw">class</span> <span class="cls">Immutable</span> {
+    <span class="kw">final int</span> x;
+    <span class="cls">Immutable</span>(<span class="kw">int</span> x) { <span class="kw">this</span>.x = x; } <span class="cm">// safe після return з ctor</span>
+}</div>
+      </div>
+    </div>
+
+    <!-- 6: антипатерни -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-red">антипатерни</span>
+        <h2>Типові помилки</h2>
+        <h3>1. run() замість start()</h3>
+        <div class="code"><span class="cm">// ПОГАНО: виконується в поточному потоці</span>
+<span class="kw">new</span> <span class="cls">Thread</span>(task).run();
+
+<span class="cm">// ДОБРЕ</span>
+<span class="kw">new</span> <span class="cls">Thread</span>(task).start();</div>
+        <hr class="sep">
+        <h3>2. volatile для non-atomic compound ops</h3>
+        <div class="code"><span class="cm">// ПОГАНО: volatile не захищає ++</span>
+<span class="kw">volatile int</span> count = <span class="num">0</span>;
+count++; <span class="cm">// race condition між потоками</span>
+
+<span class="cm">// ДОБРЕ</span>
+<span class="cls">AtomicInteger</span> count = <span class="kw">new</span> <span class="cls">AtomicInteger</span>();
+count.incrementAndGet();</div>
+        <hr class="sep">
+        <h3>3. Проковтнути InterruptedException</h3>
+        <div class="code"><span class="cm">// ПОГАНО: прапор скинуто, вищий код не дізнається</span>
+<span class="kw">try</span> { <span class="cls">Thread</span>.sleep(<span class="num">1000</span>); }
+<span class="kw">catch</span> (<span class="cls">InterruptedException</span> e) { <span class="cm">/* ignore */</span> }
+
+<span class="cm">// ДОБРЕ: відновлюємо прапор</span>
+<span class="kw">try</span> { <span class="cls">Thread</span>.sleep(<span class="num">1000</span>); }
+<span class="kw">catch</span> (<span class="cls">InterruptedException</span> e) {
+    <span class="cls">Thread</span>.currentThread().interrupt();
+    <span class="kw">return</span>;
+}</div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> стани потоку + що переводить у кожен, різниця volatile vs synchronized (atomicity!), happens-before правила (хоча б 3-4). Це база Concurrency.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

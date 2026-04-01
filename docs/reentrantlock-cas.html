@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReentrantLock, StampedLock, AtomicInteger, CAS — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--red);background:var(--red-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--red)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>ReentrantLock, StampedLock, AtomicInteger, CAS</h1>
+  <span class="header-tag">Concurrency</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Explicit Locks</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>ReentrantLock</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>ReadWriteLock</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>StampedLock</div>
+    <div class="sidebar-section">Lock-free</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>CAS — compare-and-swap</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>AtomicInteger та інші</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>LongAdder vs AtomicLong</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Порівняння і вибір</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0: ReentrantLock -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-red">explicit lock</span>
+        <h2>ReentrantLock</h2>
+        <p>Явний lock з більшим контролем ніж <code>synchronized</code>: tryLock з таймаутом, fair режим, Condition, interruptible lock.</p>
+        <div class="code"><span class="kw">private final</span> <span class="cls">ReentrantLock</span> lock = <span class="kw">new</span> <span class="cls">ReentrantLock</span>();
+
+<span class="cm">// Базове використання — завжди unlock у finally</span>
+lock.lock();
+<span class="kw">try</span> {
+    doWork();
+} <span class="kw">finally</span> {
+    lock.unlock();  <span class="cm">// обов'язково!</span>
+}
+
+<span class="cm">// tryLock — не блокує якщо lock зайнятий</span>
+<span class="kw">if</span> (lock.tryLock()) {
+    <span class="kw">try</span> { doWork(); }
+    <span class="kw">finally</span> { lock.unlock(); }
+} <span class="kw">else</span> {
+    fallback();
+}
+
+<span class="cm">// tryLock з таймаутом — для уникнення deadlock</span>
+<span class="kw">if</span> (lock.tryLock(<span class="num">100</span>, <span class="cls">TimeUnit</span>.MILLISECONDS)) { ... }</div>
+      </div>
+      <div class="card">
+        <h3>Condition — заміна wait/notify</h3>
+        <div class="code"><span class="kw">private final</span> <span class="cls">ReentrantLock</span> lock = <span class="kw">new</span> <span class="cls">ReentrantLock</span>();
+<span class="kw">private final</span> <span class="cls">Condition</span> notEmpty = lock.newCondition();
+<span class="kw">private final</span> <span class="cls">Condition</span> notFull  = lock.newCondition();
+
+<span class="cm">// Producer</span>
+lock.lock();
+<span class="kw">try</span> {
+    <span class="kw">while</span> (isFull()) notFull.await();
+    add(item);
+    notEmpty.signal();    <span class="cm">// тільки consumers</span>
+} <span class="kw">finally</span> { lock.unlock(); }
+
+<span class="cm">// Consumer</span>
+lock.lock();
+<span class="kw">try</span> {
+    <span class="kw">while</span> (isEmpty()) notEmpty.await();
+    take();
+    notFull.signal();     <span class="cm">// тільки producers</span>
+} <span class="kw">finally</span> { lock.unlock(); }</div>
+        <div class="callout callout-ok">
+          Перевага над <code>wait/notify</code>: можна мати кілька Condition на один lock і сигналізувати тільки потрібній групі потоків.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: ReadWriteLock -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-blue">read-write</span>
+        <h2>ReentrantReadWriteLock</h2>
+        <p>Два логічних локи на одному: read lock (кілька читачів одночасно) і write lock (ексклюзивний). Ідеально для read-heavy сценаріїв.</p>
+        <div class="code"><span class="kw">private final</span> <span class="cls">ReadWriteLock</span> rwLock =
+    <span class="kw">new</span> <span class="cls">ReentrantReadWriteLock</span>();
+<span class="kw">private final</span> <span class="cls">Lock</span> readLock  = rwLock.readLock();
+<span class="kw">private final</span> <span class="cls">Lock</span> writeLock = rwLock.writeLock();
+<span class="kw">private</span> <span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Data</span>&gt; cache = <span class="kw">new</span> <span class="cls">HashMap</span>&lt;&gt;();
+
+<span class="kw">public</span> <span class="cls">Data</span> get(<span class="cls">String</span> key) {
+    readLock.lock();         <span class="cm">// багато потоків можуть читати</span>
+    <span class="kw">try</span> { <span class="kw">return</span> cache.get(key); }
+    <span class="kw">finally</span> { readLock.unlock(); }
+}
+
+<span class="kw">public void</span> put(<span class="cls">String</span> key, <span class="cls">Data</span> data) {
+    writeLock.lock();        <span class="cm">// ексклюзивний доступ</span>
+    <span class="kw">try</span> { cache.put(key, data); }
+    <span class="kw">finally</span> { writeLock.unlock(); }
+}</div>
+        <div class="callout callout-warn">
+          При write-heavy навантаженні <code>ReadWriteLock</code> може бути повільнішим за <code>synchronized</code> через overhead координації. Вимірюй перед використанням.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: StampedLock -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">optimistic</span>
+        <h2>StampedLock (Java 8+)</h2>
+        <p>Три режими: write lock, read lock, і <strong>optimistic read</strong> — читає без захоплення lock, потім перевіряє чи не змінились дані. Якщо так — повторно з read lock.</p>
+        <div class="code"><span class="kw">private final</span> <span class="cls">StampedLock</span> sl = <span class="kw">new</span> <span class="cls">StampedLock</span>();
+<span class="kw">private double</span> x, y;
+
+<span class="cm">// Optimistic read — ідеально для read-heavy</span>
+<span class="kw">double</span> distanceFromOrigin() {
+    <span class="kw">long</span> stamp = sl.tryOptimisticRead(); <span class="cm">// без блокування</span>
+    <span class="kw">double</span> cx = x, cy = y;               <span class="cm">// читаємо</span>
+    <span class="kw">if</span> (!sl.validate(stamp)) {           <span class="cm">// чи не змінилось?</span>
+        stamp = sl.readLock();           <span class="cm">// ні → повторюємо з lock</span>
+        <span class="kw">try</span> { cx = x; cy = y; }
+        <span class="kw">finally</span> { sl.unlockRead(stamp); }
+    }
+    <span class="kw">return</span> <span class="cls">Math</span>.sqrt(cx*cx + cy*cy);
+}
+
+<span class="cm">// Write lock</span>
+<span class="kw">void</span> move(<span class="kw">double</span> dx, <span class="kw">double</span> dy) {
+    <span class="kw">long</span> stamp = sl.writeLock();
+    <span class="kw">try</span> { x += dx; y += dy; }
+    <span class="kw">finally</span> { sl.unlockWrite(stamp); }
+}</div>
+        <div class="callout callout-warn">
+          StampedLock <strong>не reentrant</strong>. Якщо потік захопив write lock і спробує захопити read lock — deadlock. Не підходить для рекурсивних сценаріїв.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: CAS -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-amber">lock-free</span>
+        <h2>CAS — Compare-And-Swap</h2>
+        <p>Атомарна CPU інструкція: "якщо значення в пам'яті = expected, запиши new value". Основа lock-free структур. В Java — через <code>Unsafe</code> або <code>VarHandle</code>.</p>
+        <div class="code"><span class="cm">// Псевдокод CAS (атомарно на рівні CPU):</span>
+<span class="kw">boolean</span> compareAndSet(<span class="kw">int</span> expected, <span class="kw">int</span> newValue) {
+    <span class="kw">if</span> (current == expected) {
+        current = newValue;
+        <span class="kw">return true</span>;
+    }
+    <span class="kw">return false</span>;  <span class="cm">// хтось змінив між тим — retry</span>
+}
+
+<span class="cm">// Типовий CAS loop (optimistic concurrency)</span>
+<span class="kw">int</span> oldValue, newValue;
+<span class="kw">do</span> {
+    oldValue = atomicInt.get();
+    newValue = transform(oldValue);
+} <span class="kw">while</span> (!atomicInt.compareAndSet(oldValue, newValue));</div>
+      </div>
+      <div class="card">
+        <h3>ABA проблема</h3>
+        <p>CAS бачить що значення = expected (A), але між read і write воно було змінено A → B → A. Операція проходить хибно успішно.</p>
+        <div class="code"><span class="cm">// Рішення: AtomicStampedReference — додає version counter</span>
+<span class="cls">AtomicStampedReference</span>&lt;<span class="cls">Integer</span>&gt; ref =
+    <span class="kw">new</span> <span class="cls">AtomicStampedReference</span>&lt;&gt;(<span class="num">0</span>, <span class="num">0</span>);
+
+<span class="kw">int</span>[] stampHolder = <span class="kw">new int</span>[<span class="num">1</span>];
+<span class="cls">Integer</span> val = ref.get(stampHolder);  <span class="cm">// читаємо з версією</span>
+<span class="kw">int</span> stamp = stampHolder[<span class="num">0</span>];
+
+ref.compareAndSet(val, newVal, stamp, stamp + <span class="num">1</span>);
+<span class="cm">// CAS пройде тільки якщо і значення і версія збіглись</span></div>
+      </div>
+    </div>
+
+    <!-- 4: Atomic -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-green">Atomic*</span>
+        <h2>AtomicInteger та інші</h2>
+        <div class="code"><span class="cm">// AtomicInteger — найчастіше використовується</span>
+<span class="cls">AtomicInteger</span> ai = <span class="kw">new</span> <span class="cls">AtomicInteger</span>(<span class="num">0</span>);
+ai.get()                  <span class="cm">// читання</span>
+ai.set(<span class="num">42</span>)               <span class="cm">// запис</span>
+ai.getAndIncrement()      <span class="cm">// i++ (повертає старе)</span>
+ai.incrementAndGet()      <span class="cm">// ++i (повертає нове)</span>
+ai.addAndGet(<span class="num">5</span>)          <span class="cm">// += 5</span>
+ai.compareAndSet(<span class="num">0</span>, <span class="num">1</span>)  <span class="cm">// CAS</span>
+ai.updateAndGet(x -> x * <span class="num">2</span>) <span class="cm">// lambda (Java 8+)</span>
+ai.accumulateAndGet(<span class="num">5</span>, Integer::sum)
+
+<span class="cm">// AtomicLong, AtomicBoolean — аналогічно</span>
+
+<span class="cm">// AtomicReference — для об'єктів</span>
+<span class="cls">AtomicReference</span>&lt;<span class="cls">String</span>&gt; ref = <span class="kw">new</span> <span class="cls">AtomicReference</span>&lt;&gt;(<span class="str">"init"</span>);
+ref.compareAndSet(<span class="str">"init"</span>, <span class="str">"updated"</span>);
+
+<span class="cm">// AtomicIntegerArray — масив атомарних int</span>
+<span class="cls">AtomicIntegerArray</span> arr = <span class="kw">new</span> <span class="cls">AtomicIntegerArray</span>(<span class="num">10</span>);
+arr.incrementAndGet(<span class="num">3</span>);  <span class="cm">// атомарний ++ для елемента 3</span></div>
+      </div>
+    </div>
+
+    <!-- 5: LongAdder -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-teal">high throughput</span>
+        <h2>LongAdder vs AtomicLong</h2>
+        <p>При сильній конкуренції на лічильнику <code>AtomicLong</code> витрачає багато часу на retry. <code>LongAdder</code> розподіляє запис по кількох cell, сумує при читанні.</p>
+        <div class="code"><span class="cm">// AtomicLong: один лічильник, contention при конкуренції</span>
+<span class="cls">AtomicLong</span> counter = <span class="kw">new</span> <span class="cls">AtomicLong</span>();
+counter.incrementAndGet();  <span class="cm">// CAS retry при конкуренції</span>
+
+<span class="cm">// LongAdder: stripe per thread, менше contention</span>
+<span class="cls">LongAdder</span> adder = <span class="kw">new</span> <span class="cls">LongAdder</span>();
+adder.increment();          <span class="cm">// майже без contention</span>
+adder.sum();                <span class="cm">// читання — сумує всі cells</span>
+
+<span class="cm">// LongAccumulator — для довільних операцій</span>
+<span class="cls">LongAccumulator</span> max = <span class="kw">new</span> <span class="cls">LongAccumulator</span>(<span class="cls">Long</span>::max, <span class="cls">Long</span>.MIN_VALUE);
+max.accumulate(<span class="num">42</span>);
+max.get();</div>
+        <div class="callout callout-info">
+          <strong>Коли що:</strong> <code>AtomicLong</code> — коли потрібен точний поточний стан (CAS чи read after write). <code>LongAdder</code> — коли просто накопичуєш статистику з багатьох потоків.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: порівняння -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-gray">порівняння</span>
+        <h2>Коли що використовувати</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Механізм</th><th>Коли</th><th>Перевага</th></tr></thead>
+            <tbody>
+              <tr><td><code>synchronized</code></td><td>простий exclusive доступ</td><td>простота, JVM оптимізує</td></tr>
+              <tr><td><code>ReentrantLock</code></td><td>потрібен tryLock / fair / Condition</td><td>більший контроль</td></tr>
+              <tr><td><code>ReadWriteLock</code></td><td>read-heavy, рідкі writes</td><td>паралельне читання</td></tr>
+              <tr><td><code>StampedLock</code></td><td>read-very-heavy, без reentrancy</td><td>optimistic read</td></tr>
+              <tr><td><code>AtomicInteger</code></td><td>лічильник, single variable</td><td>lock-free</td></tr>
+              <tr><td><code>LongAdder</code></td><td>high-contention counter</td><td>краще throughput</td></tr>
+              <tr><td><code>ConcurrentHashMap</code></td><td>concurrent map</td><td>segment-level lock</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> ReentrantLock vs synchronized (tryLock, fair, Condition), CAS і ABA проблема, LongAdder vs AtomicLong при high contention.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

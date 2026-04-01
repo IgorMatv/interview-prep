@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CompletableFuture — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--red);background:var(--red-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--red)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0;font-family:var(--font-mono);font-size:12px}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+td:last-child{color:#9ea3b0;font-family:var(--font-body);font-size:12.5px}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>CompletableFuture</h1>
+  <span class="header-tag">Java 8+</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Основи</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Future vs CompletableFuture</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Створення</div>
+    <div class="sidebar-section">Chaining</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>thenApply / thenCompose</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>thenCombine / allOf / anyOf</div>
+    <div class="sidebar-section">Обробка помилок</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>exceptionally / handle</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Executor для tasks</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Антипатерни</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-red">порівняння</span>
+        <h2>Future vs CompletableFuture</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th></th><th>Future</th><th>CompletableFuture</th></tr></thead>
+            <tbody>
+              <tr><td>get()</td><td>блокує потік</td><td>блокує потік</td></tr>
+              <tr><td>Chaining</td><td class="td-bad">немає</td><td class="td-good">thenApply, thenCompose...</td></tr>
+              <tr><td>Exception handling</td><td class="td-bad">тільки в get()</td><td class="td-good">exceptionally, handle</td></tr>
+              <tr><td>Комбінування</td><td class="td-bad">немає</td><td class="td-good">allOf, anyOf, thenCombine</td></tr>
+              <tr><td>Ручне завершення</td><td class="td-bad">немає</td><td class="td-good">complete(), completeExceptionally()</td></tr>
+              <tr><td>Callback</td><td class="td-bad">немає</td><td class="td-good">thenAccept, whenComplete</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: створення -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-blue">створення</span>
+        <h2>Способи створити CompletableFuture</h2>
+        <div class="code"><span class="cm">// runAsync: Runnable, повертає CompletableFuture&lt;Void&gt;</span>
+<span class="cls">CompletableFuture</span>&lt;<span class="cls">Void</span>&gt; cf1 =
+    <span class="cls">CompletableFuture</span>.runAsync(() -> doWork());
+
+<span class="cm">// supplyAsync: Supplier, повертає CompletableFuture&lt;T&gt;</span>
+<span class="cls">CompletableFuture</span>&lt;<span class="cls">String</span>&gt; cf2 =
+    <span class="cls">CompletableFuture</span>.supplyAsync(() -> compute());
+
+<span class="cm">// completedFuture: вже завершений з результатом</span>
+<span class="cls">CompletableFuture</span>&lt;<span class="cls">String</span>&gt; done =
+    <span class="cls">CompletableFuture</span>.completedFuture(<span class="str">"result"</span>);
+
+<span class="cm">// failedFuture (Java 9+): вже завершений з помилкою</span>
+<span class="cls">CompletableFuture</span>&lt;<span class="cls">String</span>&gt; failed =
+    <span class="cls">CompletableFuture</span>.failedFuture(<span class="kw">new</span> <span class="cls">RuntimeException</span>());
+
+<span class="cm">// Ручне завершення</span>
+<span class="cls">CompletableFuture</span>&lt;<span class="cls">String</span>&gt; manual = <span class="kw">new</span> <span class="cls">CompletableFuture</span>&lt;&gt;();
+manual.complete(<span class="str">"done"</span>);          <span class="cm">// завершити з результатом</span>
+manual.completeExceptionally(ex); <span class="cm">// завершити з помилкою</span></div>
+        <div class="callout callout-warn">
+          За замовчуванням <code>supplyAsync</code> і <code>runAsync</code> використовують <code>ForkJoinPool.commonPool()</code>. Для IO-bound задач завжди передавай власний Executor — інакше блокуєш спільний пул.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: thenApply/thenCompose -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">chaining</span>
+        <h2>thenApply vs thenCompose</h2>
+        <p><code>thenApply</code> — трансформує результат (Function). <code>thenCompose</code> — якщо трансформація сама повертає CompletableFuture (як flatMap у Stream).</p>
+        <div class="code"><span class="cm">// thenApply: T → U (синхронна трансформація)</span>
+<span class="cls">CompletableFuture</span>&lt;<span class="cls">String</span>&gt; upper =
+    <span class="cls">CompletableFuture</span>.supplyAsync(() -> <span class="str">"hello"</span>)
+        .thenApply(<span class="cls">String</span>::toUpperCase)   <span class="cm">// → "HELLO"</span>
+        .thenApply(s -> s + <span class="str">"!"</span>);        <span class="cm">// → "HELLO!"</span>
+
+<span class="cm">// thenCompose: T → CompletableFuture&lt;U&gt; (уникає вкладення)</span>
+<span class="cls">CompletableFuture</span>&lt;<span class="cls">User</span>&gt; user =
+    getOrderId()                        <span class="cm">// CF&lt;Long&gt;</span>
+        .thenCompose(id -> getUser(id)); <span class="cm">// id → CF&lt;User&gt;</span>
+<span class="cm">// без thenCompose вийшло б CF&lt;CF&lt;User&gt;&gt;</span>
+
+<span class="cm">// thenAccept: споживає результат без повернення</span>
+cf.thenAccept(result -> log(result));
+
+<span class="cm">// thenRun: виконує дію після завершення (немає доступу до result)</span>
+cf.thenRun(() -> cleanup());</div>
+      </div>
+      <div class="card">
+        <h3>Async суфікс — виконання в іншому потоці</h3>
+        <div class="code"><span class="cm">// thenApply: виконується в потоці попереднього stage</span>
+cf.thenApply(s -> transform(s));
+
+<span class="cm">// thenApplyAsync: виконується в ForkJoinPool.commonPool()</span>
+cf.thenApplyAsync(s -> transform(s));
+
+<span class="cm">// thenApplyAsync з executor: у заданому пулі</span>
+cf.thenApplyAsync(s -> transform(s), myExecutor);</div>
+        <div class="callout callout-info">
+          Async варіанти корисні якщо transformation важка і не хочеш навантажувати потік попереднього stage. Для легких трансформацій — просто <code>thenApply</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: combine/allOf -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-teal">комбінування</span>
+        <h2>thenCombine, allOf, anyOf</h2>
+        <div class="code"><span class="cm">// thenCombine: результати двох CF</span>
+<span class="cls">CompletableFuture</span>&lt;<span class="cls">String</span>&gt; greeting =
+    <span class="cls">CompletableFuture</span>.supplyAsync(() -> <span class="str">"Hello"</span>)
+        .thenCombine(
+            <span class="cls">CompletableFuture</span>.supplyAsync(() -> <span class="str">"World"</span>),
+            (a, b) -> a + <span class="str">" "</span> + b);    <span class="cm">// → "Hello World"</span>
+
+<span class="cm">// allOf: чекати всіх (немає результату напряму)</span>
+<span class="cls">CompletableFuture</span>&lt;<span class="cls">Void</span>&gt; all =
+    <span class="cls">CompletableFuture</span>.allOf(cf1, cf2, cf3);
+all.thenRun(() -> {
+    <span class="cls">String</span> r1 = cf1.join(); <span class="cm">// join() не кидає checked</span>
+    <span class="cls">String</span> r2 = cf2.join();
+});
+
+<span class="cm">// allOf + collect результатів</span>
+<span class="cls">List</span>&lt;<span class="cls">CompletableFuture</span>&lt;<span class="cls">String</span>&gt;&gt; futures = tasks.stream()
+    .map(t -> <span class="cls">CompletableFuture</span>.supplyAsync(() -> process(t)))
+    .toList();
+
+<span class="cls">List</span>&lt;<span class="cls">String</span>&gt; results =
+    <span class="cls">CompletableFuture</span>.allOf(futures.toArray(<span class="kw">new</span> <span class="cls">CompletableFuture</span>[<span class="num">0</span>]))
+        .thenApply(v -> futures.stream().map(<span class="cls">CompletableFuture</span>::join).toList())
+        .join();
+
+<span class="cm">// anyOf: перший завершений (будь-якого типу)</span>
+<span class="cls">CompletableFuture</span>&lt;<span class="cls">Object</span>&gt; first = <span class="cls">CompletableFuture</span>.anyOf(cf1, cf2, cf3);</div>
+      </div>
+    </div>
+
+    <!-- 4: exception handling -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-amber">помилки</span>
+        <h2>Exception handling: exceptionally, handle, whenComplete</h2>
+        <div class="code"><span class="cm">// exceptionally: тільки при помилці — як catch</span>
+cf.exceptionally(ex -> {
+    log.error(<span class="str">"Failed"</span>, ex);
+    <span class="kw">return</span> <span class="str">"default"</span>;   <span class="cm">// відновлення</span>
+});
+
+<span class="cm">// handle: завжди — і результат і помилка</span>
+cf.handle((result, ex) -> {
+    <span class="kw">if</span> (ex != <span class="kw">null</span>) <span class="kw">return</span> <span class="str">"error"</span>;
+    <span class="kw">return</span> result.toUpperCase();
+});
+
+<span class="cm">// whenComplete: side effect без трансформації</span>
+cf.whenComplete((result, ex) -> {
+    <span class="kw">if</span> (ex != <span class="kw">null</span>) metrics.error();
+    <span class="kw">else</span> metrics.success();
+    <span class="cm">// результат не змінюється</span>
+});</div>
+      </div>
+      <div class="card">
+        <h3>Exception propagation у ланцюжку</h3>
+        <div class="code"><span class="cm">// Помилка пропагується через весь ланцюжок</span>
+<span class="cls">CompletableFuture</span>.supplyAsync(() -> {
+    <span class="kw">throw new</span> <span class="cls">RuntimeException</span>(<span class="str">"oops"</span>);
+})
+.thenApply(s -> s.toUpperCase())   <span class="cm">// пропускається</span>
+.thenApply(s -> s + <span class="str">"!"</span>)           <span class="cm">// пропускається</span>
+.exceptionally(ex -> <span class="str">"recovered"</span>); <span class="cm">// ловить тут</span>
+
+<span class="cm">// join() vs get()</span>
+cf.get();    <span class="cm">// checked: ExecutionException, InterruptedException</span>
+cf.join();   <span class="cm">// unchecked: CompletionException (зручніше в ланцюжку)</span></div>
+        <div class="callout callout-warn">
+          Якщо не додати <code>exceptionally</code> або <code>handle</code> — виключення в CF мовчки ковтається. Завжди обробляй помилки явно, особливо в fire-and-forget сценаріях.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: executor -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-blue">executor</span>
+        <h2>Executor для задач</h2>
+        <p>За замовчуванням усі async операції використовують <code>ForkJoinPool.commonPool()</code>. Для IO-bound задач це небезпечно — блокується спільний пул всього застосунку.</p>
+        <div class="code"><span class="cm">// ПОГАНО: IO в commonPool</span>
+<span class="cls">CompletableFuture</span>.supplyAsync(() -> httpClient.get(url));
+<span class="cm">// блокує потік commonPool на час HTTP запиту</span>
+
+<span class="cm">// ДОБРЕ: окремий executor для IO</span>
+<span class="cls">Executor</span> ioExecutor = <span class="cls">Executors</span>.newFixedThreadPool(<span class="num">20</span>);
+
+<span class="cls">CompletableFuture</span>.supplyAsync(() -> httpClient.get(url), ioExecutor)
+    .thenApplyAsync(response -> parse(response))  <span class="cm">// commonPool ОК</span>
+    .thenAcceptAsync(result -> save(result), ioExecutor); <span class="cm">// IO → свій</span></div>
+        <div class="callout callout-info">
+          Гарна практика: два executor — <code>cpuExecutor</code> (N+1 потоків, CPU задачі) і <code>ioExecutor</code> (10-50 потоків, IO задачі). Передавай потрібний явно.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: антипатерни -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-red">антипатерни</span>
+        <h2>Типові помилки</h2>
+        <h3>1. get() без таймауту</h3>
+        <div class="code"><span class="cm">// ПОГАНО: може чекати вічно</span>
+<span class="cls">String</span> result = cf.get();
+
+<span class="cm">// ДОБРЕ: завжди з таймаутом</span>
+<span class="cls">String</span> result = cf.get(<span class="num">5</span>, <span class="cls">TimeUnit</span>.SECONDS);</div>
+        <hr class="sep">
+        <h3>2. Блокуючий код у supplyAsync без IO executor</h3>
+        <div class="code"><span class="cm">// ПОГАНО: блокує ForkJoinPool</span>
+<span class="cls">CompletableFuture</span>.supplyAsync(() -> {
+    <span class="kw">return</span> jdbcTemplate.query(...); <span class="cm">// blocking IO!</span>
+});
+
+<span class="cm">// ДОБРЕ</span>
+<span class="cls">CompletableFuture</span>.supplyAsync(() -> jdbcTemplate.query(...), ioPool);</div>
+        <hr class="sep">
+        <h3>3. Не обробляти помилки</h3>
+        <div class="code"><span class="cm">// ПОГАНО: exception загублений</span>
+<span class="cls">CompletableFuture</span>.runAsync(() -> riskyWork());
+<span class="cm">// якщо кинуло exception — нічого не відбудеться</span>
+
+<span class="cm">// ДОБРЕ</span>
+<span class="cls">CompletableFuture</span>.runAsync(() -> riskyWork())
+    .exceptionally(ex -> { log.error(<span class="str">"Failed"</span>, ex); <span class="kw">return null</span>; });</div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> thenApply vs thenCompose (flatMap аналогія), allOf + collect results патерн, exceptionally vs handle, чому не використовувати commonPool для IO.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

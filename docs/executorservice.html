@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExecutorService, ThreadPoolExecutor — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--red);background:var(--red-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--red)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+.param-row{display:flex;gap:.75rem;margin-bottom:.5rem;align-items:flex-start}
+.param-name{font-family:var(--font-mono);font-size:12px;color:var(--teal);min-width:140px;padding-top:2px}
+.param-desc{font-size:13px;color:#9ea3b0}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>ExecutorService, ThreadPoolExecutor</h1>
+  <span class="header-tag">Concurrency</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">ExecutorService</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Навіщо пули потоків</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Executors factory</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>submit vs execute</div>
+    <div class="sidebar-section">ThreadPoolExecutor</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>7 параметрів</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Rejection policies</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>shutdown vs shutdownNow</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Розмір пулу і формула</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-red">навіщо</span>
+        <h2>Навіщо пул потоків</h2>
+        <p>Створення потоку — дорога операція (~1MB stack, OS context). Пул потоків перевикористовує потоки, обмежує їх кількість і управляє чергою задач.</p>
+        <div class="code"><span class="cm">// БЕЗ пулу: new Thread на кожну задачу</span>
+<span class="kw">for</span> (<span class="cls">Request</span> req : requests) {
+    <span class="kw">new</span> <span class="cls">Thread</span>(() -> process(req)).start();
+    <span class="cm">// 10000 запитів = 10000 потоків = OOM</span>
+}
+
+<span class="cm">// З пулом: обмежена кількість потоків</span>
+<span class="cls">ExecutorService</span> pool = <span class="cls">Executors</span>.newFixedThreadPool(<span class="num">10</span>);
+<span class="kw">for</span> (<span class="cls">Request</span> req : requests) {
+    pool.submit(() -> process(req));
+    <span class="cm">// задачі стають у чергу, 10 потоків обробляють</span>
+}</div>
+        <div class="callout callout-info">
+          ExecutorService — інтерфейс. Основна реалізація — <code>ThreadPoolExecutor</code>. <code>Executors</code> — factory що створює готові конфігурації.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: Executors -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-blue">factory</span>
+        <h2>Executors factory методи</h2>
+        <div class="code"><span class="cm">// Fixed pool: n потоків, LinkedBlockingQueue</span>
+<span class="cls">Executors</span>.newFixedThreadPool(<span class="num">4</span>);
+<span class="cm">// Коли: CPU-bound задачі, відомий parallelism</span>
+
+<span class="cm">// Cached pool: потоки на вимогу, idle 60s</span>
+<span class="cls">Executors</span>.newCachedThreadPool();
+<span class="cm">// Коли: короткі IO-bound задачі, невідома кількість</span>
+<span class="cm">// РИЗИК: необмежена кількість потоків → OOM</span>
+
+<span class="cm">// Single thread: 1 потік, гарантований порядок</span>
+<span class="cls">Executors</span>.newSingleThreadExecutor();
+<span class="cm">// Коли: задачі мають виконуватись послідовно</span>
+
+<span class="cm">// Scheduled: таймер і периодичні задачі</span>
+<span class="cls">ScheduledExecutorService</span> sch = <span class="cls">Executors</span>.newScheduledThreadPool(<span class="num">2</span>);
+sch.scheduleAtFixedRate(task, <span class="num">0</span>, <span class="num">5</span>, <span class="cls">TimeUnit</span>.SECONDS);
+
+<span class="cm">// Work-stealing pool (Java 8+): ForkJoinPool</span>
+<span class="cls">Executors</span>.newWorkStealingPool();
+<span class="cm">// Коли: рекурсивні задачі, divide-and-conquer</span>
+
+<span class="cm">// Virtual thread executor (Java 21)</span>
+<span class="cls">Executors</span>.newVirtualThreadPerTaskExecutor();
+<span class="cm">// Коли: IO-bound, тисячі конкурентних задач</span></div>
+        <div class="callout callout-warn">
+          <code>newCachedThreadPool()</code> і <code>newFixedThreadPool()</code> мають <strong>unbounded queue</strong> — задачі накопичуються нескінченно. У продакшн завжди створюй ThreadPoolExecutor з bounded queue явно.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: submit vs execute -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">API</span>
+        <h2>submit() vs execute()</h2>
+        <div class="code"><span class="cm">// execute(): fire and forget, Runnable тільки</span>
+pool.execute(() -> doWork());
+<span class="cm">// exception в задачі → UncaughtExceptionHandler або тихо губиться</span>
+
+<span class="cm">// submit(): повертає Future, Runnable або Callable</span>
+<span class="cls">Future</span>&lt;<span class="cls">String</span>&gt; future = pool.submit(() -> compute());
+<span class="cls">String</span> result = future.get();  <span class="cm">// блокує, кидає ExecutionException</span>
+future.get(<span class="num">5</span>, <span class="cls">TimeUnit</span>.SECONDS); <span class="cm">// з таймаутом</span>
+future.cancel(<span class="kw">true</span>);            <span class="cm">// скасування</span>
+
+<span class="cm">// invokeAll: всі задачі, чекає завершення всіх</span>
+<span class="cls">List</span>&lt;<span class="cls">Future</span>&lt;<span class="cls">String</span>&gt;&gt; futures = pool.invokeAll(tasks);
+
+<span class="cm">// invokeAny: повертає першу успішну</span>
+<span class="cls">String</span> first = pool.invokeAny(tasks);</div>
+        <div class="callout callout-warn">
+          <strong>Exception swallowing з execute().</strong> Якщо Runnable кидає RuntimeException — вона губиться якщо не встановлено <code>UncaughtExceptionHandler</code>. Завжди використовуй <code>submit()</code> і перевіряй <code>Future.get()</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: параметри -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-amber">ThreadPoolExecutor</span>
+        <h2>7 параметрів ThreadPoolExecutor</h2>
+        <div class="code"><span class="kw">new</span> <span class="cls">ThreadPoolExecutor</span>(
+    <span class="num">4</span>,                              <span class="cm">// corePoolSize</span>
+    <span class="num">8</span>,                              <span class="cm">// maximumPoolSize</span>
+    <span class="num">60</span>, <span class="cls">TimeUnit</span>.SECONDS,           <span class="cm">// keepAliveTime</span>
+    <span class="kw">new</span> <span class="cls">LinkedBlockingQueue</span>&lt;&gt;(<span class="num">100</span>), <span class="cm">// workQueue</span>
+    <span class="kw">new</span> <span class="cls">ThreadFactory</span>() { ... },   <span class="cm">// threadFactory</span>
+    <span class="kw">new</span> <span class="cls">ThreadPoolExecutor</span>.<span class="cls">CallerRunsPolicy</span>() <span class="cm">// handler</span>
+);</div>
+      </div>
+      <div class="card">
+        <h3>Логіка додавання задачі</h3>
+        <p>Порядок важливий — нова задача проходить три перевірки:</p>
+        <div class="code"><span class="cm">// 1. threads < corePoolSize → створити новий потік</span>
+<span class="cm">// 2. queue не повна → додати в чергу</span>
+<span class="cm">// 3. threads < maximumPoolSize → створити non-core потік</span>
+<span class="cm">// 4. queue повна + max threads → RejectedExecutionHandler</span></div>
+        <div class="callout callout-warn">
+          Нові потоки понад core створюються тільки <strong>коли черга повна</strong>. З unbounded queue (LinkedBlockingQueue без ліміту) — maximumPoolSize ніколи не досягається. Це типова пастка.
+        </div>
+        <hr class="sep">
+        <h3>keepAliveTime</h3>
+        <p>Час через який idle non-core потік завершується. За замовчуванням core потоки не завершуються. Можна змінити: <code>allowCoreThreadTimeOut(true)</code>.</p>
+      </div>
+    </div>
+
+    <!-- 4: rejection -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-red">rejection</span>
+        <h2>Rejection Policies</h2>
+        <p>Викликається коли задачу неможливо виконати: пул зупинено або черга і всі потоки зайняті.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Policy</th><th>Поведінка</th></tr></thead>
+            <tbody>
+              <tr><td><code>AbortPolicy</code></td><td class="td-bad">кидає RejectedExecutionException (default)</td></tr>
+              <tr><td><code>CallerRunsPolicy</code></td><td class="td-warn">виконує в потоці caller — природній backpressure</td></tr>
+              <tr><td><code>DiscardPolicy</code></td><td class="td-bad">мовчки ігнорує задачу</td></tr>
+              <tr><td><code>DiscardOldestPolicy</code></td><td class="td-warn">видаляє найстарішу з черги і retry</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code" style="margin-top:.75rem"><span class="cm">// Своя політика: логуємо відхилення</span>
+<span class="kw">new</span> <span class="cls">ThreadPoolExecutor</span>.RejectedExecutionHandler() {
+    <span class="kw">public void</span> rejectedExecution(<span class="cls">Runnable</span> r, <span class="cls">ThreadPoolExecutor</span> e) {
+        log.warn(<span class="str">"Task rejected: {}"</span>, r);
+        metrics.increment(<span class="str">"rejected_tasks"</span>);
+        <span class="cm">// або відправити в fallback queue</span>
+    }
+};</div>
+        <div class="callout callout-ok">
+          <strong>CallerRunsPolicy</strong> — найрозумніший дефолт для більшості сервісів: уповільнює producer природно без втрати задач.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: shutdown -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-blue">lifecycle</span>
+        <h2>shutdown() vs shutdownNow()</h2>
+        <div class="code"><span class="cm">// shutdown(): graceful — дочекатись всіх задач</span>
+pool.shutdown();
+<span class="cm">// нові задачі не приймаються, черга допрацьовується</span>
+
+<span class="cm">// Правильний graceful shutdown:</span>
+pool.shutdown();
+<span class="kw">try</span> {
+    <span class="kw">if</span> (!pool.awaitTermination(<span class="num">30</span>, <span class="cls">TimeUnit</span>.SECONDS)) {
+        pool.shutdownNow();  <span class="cm">// примусово якщо не завершилось</span>
+        <span class="kw">if</span> (!pool.awaitTermination(<span class="num">10</span>, <span class="cls">TimeUnit</span>.SECONDS))
+            log.error(<span class="str">"Pool did not terminate"</span>);
+    }
+} <span class="kw">catch</span> (<span class="cls">InterruptedException</span> e) {
+    pool.shutdownNow();
+    <span class="cls">Thread</span>.currentThread().interrupt();
+}
+
+<span class="cm">// shutdownNow(): агресивний — interrupt всіх потоків</span>
+<span class="cls">List</span>&lt;<span class="cls">Runnable</span>&gt; unfinished = pool.shutdownNow();
+<span class="cm">// повертає задачі що не почались</span>
+<span class="cm">// виконуючі задачі отримують interrupt (cooperative!)</span></div>
+      </div>
+    </div>
+
+    <!-- 6: розмір пулу -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-teal">налаштування</span>
+        <h2>Розмір пулу і формула</h2>
+        <p>Немає універсальної відповіді — залежить від типу задач і CPU. Дві базові формули:</p>
+        <div class="code"><span class="cm">// CPU-bound задачі (обчислення, без IO):</span>
+<span class="kw">int</span> cpus = <span class="cls">Runtime</span>.getRuntime().availableProcessors();
+<span class="kw">int</span> poolSize = cpus + <span class="num">1</span>;  <span class="cm">// +1 для компенсації page faults</span>
+
+<span class="cm">// IO-bound задачі (DB, HTTP, файли):</span>
+<span class="cm">// poolSize = cpus * targetCpuUtilization * (1 + W/C)</span>
+<span class="cm">// W = wait time, C = compute time</span>
+<span class="cm">// Якщо 90% часу чекаємо IO:</span>
+<span class="kw">int</span> poolSize = cpus * <span class="num">1</span> * (<span class="num">1</span> + <span class="num">9</span>);  <span class="cm">// = 10 * cpus</span></div>
+        <div class="callout callout-warn">
+          Ці формули — відправна точка, не відповідь. Завжди вимірюй з реальним навантаженням. Занадто великий пул → context switching overhead. Занадто малий → idle CPU або черга росте.
+        </div>
+        <hr class="sep">
+        <h3>Моніторинг пулу</h3>
+        <div class="code"><span class="cls">ThreadPoolExecutor</span> tpe = (<span class="cls">ThreadPoolExecutor</span>) pool;
+tpe.getPoolSize()          <span class="cm">// поточна кількість потоків</span>
+tpe.getActiveCount()       <span class="cm">// зайнятих потоків</span>
+tpe.getQueue().size()      <span class="cm">// задач у черзі</span>
+tpe.getCompletedTaskCount() <span class="cm">// виконано всього</span>
+tpe.getTaskCount()         <span class="cm">// заплановано всього</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> логіка додавання задачі (core → queue → max → reject), різниця shutdown/shutdownNow, CallerRunsPolicy як backpressure, unbounded queue пастка.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

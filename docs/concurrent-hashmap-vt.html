@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConcurrentHashMap, Virtual Threads — Java 21</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--teal);background:var(--teal-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--teal)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-purple{background:var(--purple-bg);color:var(--purple)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem}
+.metric{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.9rem 1rem}
+.metric .val{font-size:20px;font-weight:600;color:var(--text);font-family:var(--font-mono)}.metric .lbl{font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--font-mono)}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>ConcurrentHashMap, Virtual Threads</h1>
+  <span class="header-tag">Java 8 / Java 21</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">ConcurrentHashMap</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Структура і локи</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Атомарні операції</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>vs synchronizedMap</div>
+    <div class="sidebar-section">Virtual Threads</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Project Loom — навіщо</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Створення і API</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Pinning і обмеження</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Коли VT, коли Platform</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0: CHM structure -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-teal">структура</span>
+        <h2>ConcurrentHashMap — як влаштований</h2>
+        <p>Java 8+: масив <code>Node[]</code> (як HashMap), але синхронізація на рівні окремих бакетів через <code>synchronized(bin)</code> і CAS для порожніх бакетів. Немає глобального lock.</p>
+        <div class="code"><span class="cm">// Java 8+ — синхронізація per-bucket</span>
+<span class="cm">// Порожній бакет: CAS (lock-free)</span>
+<span class="cm">// Зайнятий бакет: synchronized(firstNode)</span>
+
+<span class="cm">// Concurrency level: ефективно = кількість бакетів</span>
+<span class="cm">// При 16 бакетах — 16 потоків можуть писати паралельно</span>
+
+<span class="cm">// size() — не точна при concurrent updates</span>
+<span class="cm">// використовує LongAdder-подібний механізм</span>
+map.size();           <span class="cm">// ~точна</span>
+map.mappingCount();   <span class="cm">// long, точніша для великих мап</span></div>
+        <div class="callout callout-info">
+          На відміну від Java 7 (сегменти), Java 8 CHM не має фіксованого concurrency level. Lock granularity = кожен бакет окремо. Це дає кращий throughput.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: atomic ops -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-teal">атомарні операції</span>
+        <h2>Атомарні операції CHM</h2>
+        <p>ConcurrentHashMap має атомарні методи для типових concurrent патернів. Використовуй їх замість ручної синхронізації.</p>
+        <div class="code"><span class="cm">// putIfAbsent: атомарний check-then-act</span>
+map.putIfAbsent(key, value);
+<span class="cm">// повертає null якщо додано, або існуюче значення</span>
+
+<span class="cm">// computeIfAbsent: lazy ініціалізація</span>
+map.computeIfAbsent(key, k -> expensiveCompute(k));
+<span class="cm">// функція викликається тільки якщо ключа немає</span>
+<span class="cm">// АТОМАРНА — гарантія одноразового виклику для ключа</span>
+
+<span class="cm">// computeIfPresent: оновити тільки якщо є</span>
+map.computeIfPresent(key, (k, v) -> v + <span class="num">1</span>);
+
+<span class="cm">// compute: create or update</span>
+map.compute(key, (k, v) -> v == <span class="kw">null</span> ? <span class="num">1</span> : v + <span class="num">1</span>);
+
+<span class="cm">// merge: combine або put</span>
+map.merge(key, <span class="num">1</span>, Integer::sum);
+<span class="cm">// якщо ключа немає → put(key, 1)</span>
+<span class="cm">// якщо є → put(key, oldValue + 1)</span>
+
+<span class="cm">// replace: атомарний conditional update</span>
+map.replace(key, oldValue, newValue); <span class="cm">// CAS для values</span></div>
+        <div class="callout callout-ok">
+          <code>merge(key, 1, Integer::sum)</code> — найелегантніший спосіб атомарного лічильника в Map. Жодного synchronized не потрібно.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: vs synchronizedMap -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-blue">порівняння</span>
+        <h2>ConcurrentHashMap vs synchronizedMap</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th></th><th>ConcurrentHashMap</th><th>synchronizedMap</th></tr></thead>
+            <tbody>
+              <tr><td>Lock granularity</td><td class="td-good">per-bucket</td><td class="td-bad">весь map</td></tr>
+              <tr><td>Concurrent reads</td><td class="td-good">без lock</td><td class="td-bad">lock на кожне</td></tr>
+              <tr><td>Null key/value</td><td class="td-bad">не підтримує</td><td class="td-good">підтримує</td></tr>
+              <tr><td>Ітерація</td><td class="td-good">weakly consistent</td><td class="td-warn">треба синхронізувати</td></tr>
+              <tr><td>size()</td><td class="td-warn">~точна</td><td class="td-good">точна (але під lock)</td></tr>
+              <tr><td>Atomic compound ops</td><td class="td-good">вбудовані</td><td class="td-bad">потрібна синхронізація</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout-warn">
+          Навіть у ConcurrentHashMap — <strong>compound операції не атомарні</strong> якщо робити їх через окремі виклики. Використовуй <code>compute</code>, <code>merge</code>, <code>putIfAbsent</code>.
+        </div>
+        <div class="code"><span class="cm">// НЕ атомарно навіть з CHM:</span>
+<span class="kw">if</span> (!map.containsKey(key)) {   <span class="cm">// check</span>
+    map.put(key, value);        <span class="cm">// act — race condition!</span>
+}
+<span class="cm">// АТОМАРНО:</span>
+map.putIfAbsent(key, value);</div>
+      </div>
+    </div>
+
+    <!-- 3: Virtual Threads -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-purple">Java 21</span>
+        <h2>Project Loom — навіщо Virtual Threads</h2>
+        <p>Platform thread = OS thread (~1MB stack, контекстний перемикач дорогий). Мільйон потоків = OOM. Virtual thread — легкий потік JVM (~handful of KB), може бути мільйони.</p>
+        <div class="grid2">
+          <div class="metric">
+            <div class="val">~1 MB</div>
+            <div class="lbl">platform thread stack</div>
+          </div>
+          <div class="metric">
+            <div class="val">~few KB</div>
+            <div class="lbl">virtual thread stack</div>
+          </div>
+          <div class="metric">
+            <div class="val">~10K</div>
+            <div class="lbl">max platform threads</div>
+          </div>
+          <div class="metric">
+            <div class="val">мільйони</div>
+            <div class="lbl">virtual threads</div>
+          </div>
+        </div>
+        <div class="callout callout-info">
+          Virtual Threads не роблять код швидшим — вони усувають <strong>scalability bottleneck</strong> при IO-bound навантаженні. Thread-per-request модель стає практичною.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: VT API -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-purple">API</span>
+        <h2>Створення Virtual Threads</h2>
+        <div class="code"><span class="cm">// Thread.ofVirtual()</span>
+<span class="cls">Thread</span> vt = <span class="cls">Thread</span>.ofVirtual()
+    .name(<span class="str">"worker-"</span>, <span class="num">0</span>)   <span class="cm">// ім'я з автоінкрементом</span>
+    .start(() -> doWork());
+
+<span class="cm">// ExecutorService з virtual threads</span>
+<span class="kw">try</span> (<span class="cls">ExecutorService</span> exec =
+        <span class="cls">Executors</span>.newVirtualThreadPerTaskExecutor()) {
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i < <span class="num">1_000_000</span>; i++) {
+        exec.submit(() -> handleRequest());
+    }
+} <span class="cm">// try-with-resources: чекає завершення всіх</span>
+
+<span class="cm">// Перевірити чи virtual</span>
+<span class="cls">Thread</span>.currentThread().isVirtual(); <span class="cm">// → true</span>
+
+<span class="cm">// Virtual threads = daemon threads за замовчуванням</span>
+<span class="cm">// JVM не чекає їх завершення автоматично</span></div>
+        <div class="callout callout-ok">
+          Virtual thread при блокуючому IO (socket read, DB query) <strong>unmounts</strong> від OS потоку, звільняє його для інших VT, і remounts коли IO завершується. Це і є магія Loom.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: pinning -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-amber">обмеження</span>
+        <h2>Pinning і обмеження Virtual Threads</h2>
+        <p><strong>Pinning</strong> — virtual thread не може unmount від carrier (OS) thread. Це блокує весь carrier.</p>
+        <div class="code"><span class="cm">// Pinning відбувається при:</span>
+<span class="cm">// 1. synchronized блок/метод</span>
+<span class="kw">synchronized</span>(<span class="kw">this</span>) {
+    httpClient.get(url); <span class="cm">// pinned! VT не відпускає carrier</span>
+}
+
+<span class="cm">// 2. native методи (JNI)</span>
+<span class="cm">// 3. Foreign Function calls</span>
+
+<span class="cm">// Рішення: замінити synchronized на ReentrantLock</span>
+<span class="kw">private final</span> <span class="cls">ReentrantLock</span> lock = <span class="kw">new</span> <span class="cls">ReentrantLock</span>();
+lock.lock();
+<span class="kw">try</span> {
+    httpClient.get(url); <span class="cm">// VT може unmount під час IO</span>
+} <span class="kw">finally</span> { lock.unlock(); }</div>
+        <div class="callout callout-warn">
+          Виявляти pinning: <code>-Djdk.tracePinnedThreads=full</code> або JFR event <code>jdk.VirtualThreadPinned</code>. Spring Boot 3.2+ автоматично конфігурується для VT без pinning.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: коли що -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-gray">вибір</span>
+        <h2>Коли Virtual, коли Platform threads</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Сценарій</th><th>Рекомендація</th></tr></thead>
+            <tbody>
+              <tr><td>IO-bound: DB, HTTP, файли</td><td class="td-good">Virtual Threads</td></tr>
+              <tr><td>CPU-bound: обчислення</td><td class="td-warn">Platform, N+1 потоків</td></tr>
+              <tr><td>Thread-per-request сервер</td><td class="td-good">Virtual Threads</td></tr>
+              <tr><td>ForkJoinPool / parallel stream</td><td class="td-warn">Platform (Loom не допоможе)</td></tr>
+              <tr><td>ThreadLocal з великим state</td><td class="td-bad">обережно — VT може бути мільйони</td></tr>
+              <tr><td>synchronized + IO всередині</td><td class="td-bad">pinning — треба ReentrantLock</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> CHM — per-bucket lock, CAS для порожніх бакетів, compute/merge/putIfAbsent. Virtual Threads — unmount при IO, pinning при synchronized, мільйони паралельних задач.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>
