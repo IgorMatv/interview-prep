@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reflection, Annotations — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--amber);background:var(--amber-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--amber)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Reflection, Annotations</h1>
+  <span class="header-tag">Java / Spring</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Reflection</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Reflection API основи</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Як Spring використовує</div>
+    <div class="sidebar-section">Annotations</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Meta-annotations</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Custom annotation</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Annotation processing</div>
+    <div class="sidebar-section">Нюанси</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Reflection overhead</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Module system обмеження</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-amber">reflection</span>
+        <h2>Reflection API</h2>
+        <p>Reflection дозволяє інспектувати і маніпулювати класами, методами, полями в runtime — навіть приватними.</p>
+        <div class="code"><span class="cm">// Class об'єкт</span>
+<span class="cls">Class</span>&lt;?&gt; clazz = <span class="cls">MyService</span>.<span class="kw">class</span>;
+<span class="cls">Class</span>&lt;?&gt; clazz = obj.getClass();
+<span class="cls">Class</span>&lt;?&gt; clazz = <span class="cls">Class</span>.forName(<span class="str">"com.example.MyService"</span>);
+
+<span class="cm">// Методи</span>
+<span class="cls">Method</span>[] methods = clazz.getDeclaredMethods();  <span class="cm">// включно private</span>
+<span class="cls">Method</span> m = clazz.getDeclaredMethod(<span class="str">"doWork"</span>, <span class="cls">String</span>.<span class="kw">class</span>);
+m.setAccessible(<span class="kw">true</span>);  <span class="cm">// обхід private/protected</span>
+<span class="cls">Object</span> result = m.invoke(instance, <span class="str">"arg"</span>);
+
+<span class="cm">// Поля</span>
+<span class="cls">Field</span> f = clazz.getDeclaredField(<span class="str">"value"</span>);
+f.setAccessible(<span class="kw">true</span>);
+f.set(instance, <span class="str">"newValue"</span>);
+<span class="cls">Object</span> val = f.get(instance);
+
+<span class="cm">// Конструктори</span>
+<span class="cls">Constructor</span>&lt;?&gt; ctor = clazz.getDeclaredConstructor(<span class="cls">String</span>.<span class="kw">class</span>);
+ctor.setAccessible(<span class="kw">true</span>);
+<span class="cls">Object</span> obj = ctor.newInstance(<span class="str">"arg"</span>);</div>
+      </div>
+    </div>
+
+    <!-- 1: Spring -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-green">Spring</span>
+        <h2>Як Spring використовує Reflection</h2>
+        <ul>
+          <li><strong>Dependency Injection:</strong> сканує класи → знаходить <code>@Autowired</code> поля → <code>field.set(bean, dependency)</code></li>
+          <li><strong>@Transactional:</strong> під час старту знаходить анотовані методи → створює CGLIB proxy → interceptor перед/після методу</li>
+          <li><strong>@RequestMapping:</strong> сканує <code>@Controller</code> → знаходить методи з <code>@GetMapping</code> → реєструє HandlerMapping</li>
+          <li><strong>Jackson:</strong> сканує поля/getter'и класу → серіалізує/десеріалізує</li>
+        </ul>
+        <div class="code"><span class="cm">// Спрощено: Spring DI через reflection</span>
+<span class="kw">for</span> (<span class="cls">Field</span> field : bean.getClass().getDeclaredFields()) {
+    <span class="kw">if</span> (field.isAnnotationPresent(<span class="cls">Autowired</span>.<span class="kw">class</span>)) {
+        field.setAccessible(<span class="kw">true</span>);
+        <span class="cls">Object</span> dependency = context.getBean(field.getType());
+        field.set(bean, dependency);
+    }
+}
+
+<span class="cm">// Спрощено: сканування @RequestMapping</span>
+<span class="kw">for</span> (<span class="cls">Method</span> method : controller.getClass().getDeclaredMethods()) {
+    <span class="cls">GetMapping</span> mapping = method.getAnnotation(<span class="cls">GetMapping</span>.<span class="kw">class</span>);
+    <span class="kw">if</span> (mapping != <span class="kw">null</span>) {
+        registerHandler(mapping.value(), method);
+    }
+}</div>
+        <div class="callout callout-info">
+          Spring робить більшість reflection-роботи при <strong>startup</strong>, кешує результати. В runtime — здебільшого CGLIB proxy (без reflection overhead). Тому Spring в продакшн швидкий попри використання reflection.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: meta-annotations -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-amber">annotations</span>
+        <h2>Meta-annotations</h2>
+        <p>Анотації над анотаціями. Визначають де і як довго анотація існує.</p>
+        <div class="code"><span class="cm">// @Target: де дозволено використовувати</span>
+<span class="ann">@Target</span>({<span class="cls">ElementType</span>.METHOD, <span class="cls">ElementType</span>.TYPE})
+<span class="cm">// TYPE, FIELD, METHOD, PARAMETER, CONSTRUCTOR,</span>
+<span class="cm">// LOCAL_VARIABLE, ANNOTATION_TYPE, PACKAGE,</span>
+<span class="cm">// TYPE_PARAMETER, TYPE_USE, MODULE, RECORD_COMPONENT</span>
+
+<span class="cm">// @Retention: скільки живе анотація</span>
+<span class="ann">@Retention</span>(<span class="cls">RetentionPolicy</span>.RUNTIME)
+<span class="cm">// SOURCE:  тільки в вихідному коді (для apt)</span>
+<span class="cm">// CLASS:   у .class файлі, але не в runtime (default)</span>
+<span class="cm">// RUNTIME: доступна через reflection в runtime</span>
+
+<span class="cm">// @Documented: включати в Javadoc</span>
+<span class="ann">@Documented</span>
+
+<span class="cm">// @Inherited: підкласи успадковують анотацію класу</span>
+<span class="ann">@Inherited</span>
+
+<span class="cm">// @Repeatable: можна застосовувати кілька разів</span>
+<span class="ann">@Repeatable</span>(<span class="cls">Roles</span>.<span class="kw">class</span>)
+<span class="kw">public @interface</span> <span class="cls">Role</span> { <span class="cls">String</span> value(); }</div>
+        <div class="callout callout-warn">
+          Якщо <code>@Retention</code> не вказано — default <code>CLASS</code>. Для Spring та інших фреймворків що читають анотації в runtime — обов'язково <code>RUNTIME</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: custom annotation -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-green">практика</span>
+        <h2>Custom annotation + AOP</h2>
+        <p>Типовий патерн: анотація маркує метод, AOP aspect перехоплює виклик.</p>
+        <div class="code"><span class="cm">// 1. Визначення анотації</span>
+<span class="ann">@Target</span>(<span class="cls">ElementType</span>.METHOD)
+<span class="ann">@Retention</span>(<span class="cls">RetentionPolicy</span>.RUNTIME)
+<span class="kw">public @interface</span> <span class="cls">Timed</span> {
+    <span class="cls">String</span> value() <span class="kw">default</span> <span class="str">""</span>;  <span class="cm">// елементи анотації</span>
+}
+
+<span class="cm">// 2. Використання</span>
+<span class="ann">@Timed</span>(<span class="str">"poi-search"</span>)
+<span class="kw">public</span> <span class="cls">List</span>&lt;<span class="cls">Poi</span>&gt; findNearby(<span class="cls">Location</span> loc) { ... }
+
+<span class="cm">// 3. AOP Aspect</span>
+<span class="ann">@Aspect</span> <span class="ann">@Component</span>
+<span class="kw">public class</span> <span class="cls">TimingAspect</span> {
+    <span class="ann">@Around</span>(<span class="str">"@annotation(timed)"</span>)
+    <span class="kw">public</span> <span class="cls">Object</span> time(<span class="cls">ProceedingJoinPoint</span> pjp, <span class="cls">Timed</span> timed)
+            <span class="kw">throws</span> <span class="cls">Throwable</span> {
+        <span class="kw">long</span> start = <span class="cls">System</span>.nanoTime();
+        <span class="kw">try</span> {
+            <span class="kw">return</span> pjp.proceed();
+        } <span class="kw">finally</span> {
+            <span class="kw">long</span> elapsed = <span class="cls">System</span>.nanoTime() - start;
+            metrics.record(timed.value(), elapsed);
+        }
+    }
+}</div>
+      </div>
+    </div>
+
+    <!-- 4: annotation processing -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-blue">APT</span>
+        <h2>Annotation Processing (compile-time)</h2>
+        <p>Annotation Processor — плагін компілятора що читає анотації і генерує код або перевіряє правила. Виконується під час компіляції, не в runtime.</p>
+        <div class="code"><span class="cm">// Приклади популярних APT:</span>
+<span class="cm">// Lombok: @Data, @Builder → генерує getters, equals, toString</span>
+<span class="cm">// MapStruct: @Mapper → генерує mapper реалізацію</span>
+<span class="cm">// Dagger/Hilt: @Inject → генерує DI код</span>
+<span class="cm">// AutoValue: @AutoValue → immutable value classes</span>
+
+<span class="cm">// Свій Annotation Processor</span>
+<span class="ann">@SupportedAnnotationTypes</span>(<span class="str">"com.example.MyAnnotation"</span>)
+<span class="ann">@SupportedSourceVersion</span>(<span class="cls">SourceVersion</span>.RELEASE_21)
+<span class="kw">public class</span> <span class="cls">MyProcessor</span> <span class="kw">extends</span> <span class="cls">AbstractProcessor</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public boolean</span> process(<span class="cls">Set</span>&lt;? <span class="kw">extends</span> <span class="cls">TypeElement</span>&gt; annotations,
+                            <span class="cls">RoundEnvironment</span> roundEnv) {
+        <span class="kw">for</span> (<span class="cls">Element</span> el : roundEnv.getElementsAnnotatedWith(<span class="cls">MyAnnotation</span>.<span class="kw">class</span>)) {
+            <span class="cm">// Перевірка або генерація коду</span>
+        }
+        <span class="kw">return true</span>;
+    }
+}</div>
+        <div class="callout callout-ok">
+          APT генерує код під час компіляції — на відміну від reflection що працює в runtime. APT: нульовий runtime overhead. Retrofit + annotation processors + GraalVM Native Image — популярна комбінація.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: overhead -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-red">нюанс</span>
+        <h2>Reflection overhead і кешування</h2>
+        <p>Reflection значно повільніший за прямий виклик, але кешування <code>Method</code> об'єктів мінімізує overhead.</p>
+        <div class="code"><span class="cm">// ПОГАНО: getDeclaredMethod() на кожен виклик</span>
+<span class="kw">void</span> callMethod(<span class="cls">Object</span> obj) <span class="kw">throws</span> <span class="cls">Exception</span> {
+    obj.getClass()
+       .getDeclaredMethod(<span class="str">"doWork"</span>)  <span class="cm">// lookup кожен раз</span>
+       .invoke(obj);
+}
+
+<span class="cm">// ДОБРЕ: кешувати Method об'єкт</span>
+<span class="kw">private static final</span> <span class="cls">Method</span> DO_WORK;
+<span class="kw">static</span> {
+    <span class="kw">try</span> {
+        DO_WORK = <span class="cls">MyClass</span>.<span class="kw">class</span>.getDeclaredMethod(<span class="str">"doWork"</span>);
+        DO_WORK.setAccessible(<span class="kw">true</span>); <span class="cm">// один раз</span>
+    } <span class="kw">catch</span> (<span class="cls">NoSuchMethodException</span> e) { <span class="kw">throw new</span> <span class="cls">ExceptionInInitializerError</span>(e); }
+}
+
+<span class="cm">// Java 9+ альтернатива: MethodHandle (швидше ніж reflection)</span>
+<span class="cls">MethodHandle</span> mh = <span class="cls">MethodHandles</span>.lookup()
+    .findVirtual(<span class="cls">MyClass</span>.<span class="kw">class</span>, <span class="str">"doWork"</span>,
+                 <span class="cls">MethodType</span>.methodType(<span class="kw">void</span>.<span class="kw">class</span>));
+mh.invoke(instance);</div>
+      </div>
+    </div>
+
+    <!-- 6: modules -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-amber">Java 9+</span>
+        <h2>Module system і reflection</h2>
+        <p>Java Module System (Java 9+) за замовчуванням забороняє reflection до non-exported пакетів. Потрібний явний дозвіл.</p>
+        <div class="code"><span class="cm">// module-info.java: відкрити пакет для reflection</span>
+module com.example.app {
+    exports com.example.api;
+    <span class="cm">// opens дозволяє reflection (відкриває для runtime)</span>
+    opens com.example.internal;
+    <span class="cm">// opens тільки для конкретного модуля</span>
+    opens com.example.model to com.fasterxml.jackson.databind;
+}
+
+<span class="cm">// Без opens → InaccessibleObjectException при setAccessible()</span>
+
+<span class="cm">// Командний рядок (workaround для legacy libs):</span>
+--add-opens java.base/java.lang=ALL-UNNAMED
+--add-opens java.base/java.util=ALL-UNNAMED</div>
+        <div class="callout callout-warn">
+          Spring Boot з Java 9+ може потребувати <code>--add-opens</code> для деяких бібліотек. У Spring Boot 3+ більшість проблем вирішено — але legacy deps можуть потребувати ручного налаштування.
+        </div>
+        <div class="callout callout-info" style="margin-top:.5rem">
+          <strong>На співбесіді:</strong> @Retention(RUNTIME) — обов'язково щоб читати в runtime, Spring DI через reflection + кешування при startup, MethodHandle vs reflection (швидше), модульна система і opens.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

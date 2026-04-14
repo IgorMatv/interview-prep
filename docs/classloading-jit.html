@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Loading, JIT, Escape Analysis — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--amber);background:var(--amber-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--amber)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Class Loading, JIT, Escape Analysis</h1>
+  <span class="header-tag">JVM Internals</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Class Loading</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>ClassLoader ієрархія</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Завантаження і linking</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>ClassLoader leak</div>
+    <div class="sidebar-section">JIT</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Інтерпретатор і JIT рівні</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>JIT оптимізації</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Escape Analysis</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Warmup і deoptimization</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0: ClassLoader hierarchy -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-amber">class loading</span>
+        <h2>ClassLoader ієрархія</h2>
+        <p>ClassLoader завантажує .class файли в JVM. Ієрархія делегує завантаження вгору — <strong>Parent Delegation Model</strong>.</p>
+        <div class="code"><span class="cm">// Java 11+ ієрархія:</span>
+<span class="cm">// Bootstrap ClassLoader  (C++, null в Java)</span>
+<span class="cm">// └── java.lang, java.util, java.io...</span>
+<span class="cm">//</span>
+<span class="cm">// Platform ClassLoader   (раніше Extension)</span>
+<span class="cm">// └── java.sql, java.xml, java.security...</span>
+<span class="cm">//</span>
+<span class="cm">// Application ClassLoader (System)</span>
+<span class="cm">// └── classpath, module-path класи</span>
+<span class="cm">//</span>
+<span class="cm">// Custom ClassLoaders</span>
+<span class="cm">// └── OSGi, Tomcat, URLClassLoader...</span>
+
+<span class="cm">// Отримати ClassLoader класу</span>
+<span class="cls">String</span>.<span class="kw">class</span>.getClassLoader();          <span class="cm">// null = Bootstrap</span>
+<span class="cls">MyClass</span>.<span class="kw">class</span>.getClassLoader();        <span class="cm">// Application CL</span>
+<span class="cls">Thread</span>.currentThread().getContextClassLoader();</div>
+      </div>
+      <div class="card">
+        <h3>Parent Delegation Model</h3>
+        <p>При запиті на завантаження класу — спочатку делегуємо батьківському ClassLoader. Клас завантажується батьком якщо він його знає. Це запобігає підміні системних класів.</p>
+        <div class="code"><span class="cm">// Алгоритм loadClass():</span>
+<span class="cm">// 1. Перевірити кеш (вже завантажений?)</span>
+<span class="cm">// 2. Делегувати parent.loadClass()</span>
+<span class="cm">// 3. Якщо parent не знайшов → findClass() сам</span>
+<span class="cm">// 4. ClassNotFoundException якщо ніхто не знайшов</span>
+
+<span class="cm">// Custom ClassLoader: override findClass(), не loadClass()</span>
+<span class="kw">class</span> <span class="cls">MyLoader</span> <span class="kw">extends</span> <span class="cls">ClassLoader</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">protected</span> <span class="cls">Class</span>&lt;?&gt; findClass(<span class="cls">String</span> name) <span class="kw">throws</span> <span class="cls">ClassNotFoundException</span> {
+        <span class="kw">byte</span>[] bytes = loadBytesFromCustomSource(name);
+        <span class="kw">return</span> defineClass(name, bytes, <span class="num">0</span>, bytes.length);
+    }
+}</div>
+      </div>
+    </div>
+
+    <!-- 1: loading phases -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-amber">фази</span>
+        <h2>Завантаження і linking класу</h2>
+        <div class="code"><span class="cm">// 5 фаз завантаження класу:</span>
+
+<span class="cm">// 1. Loading: читаємо .class файл → Class об'єкт у Metaspace</span>
+
+<span class="cm">// 2. Verification: перевірка bytecode</span>
+<span class="cm">// - Структура файлу коректна?</span>
+<span class="cm">// - Типи операцій відповідають операндам?</span>
+<span class="cm">// - Немає переповнення стеку?</span>
+
+<span class="cm">// 3. Preparation: статичні поля → default values</span>
+<span class="cm">// static int x;  → x = 0 (не значення з ініціалізатора)</span>
+
+<span class="cm">// 4. Resolution: символьні посилання → прямі посилання</span>
+<span class="cm">// "com.example.Foo" → реальний Class об'єкт</span>
+
+<span class="cm">// 5. Initialization: виконання static ініціалізаторів</span>
+<span class="cm">// static { ... } і static поля з ініціалізаторами</span>
+<span class="kw">static int</span> x = computeX(); <span class="cm">// виконується тут</span></div>
+        <div class="callout callout-info">
+          <strong>Клас ініціалізується</strong> при: першому зверненні до static поля/методу, створенні об'єкту, виклику через reflection. Ініціалізація thread-safe — JVM гарантує що static ініціалізатор виконується лише раз.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: ClassLoader leak -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-red">leak</span>
+        <h2>ClassLoader leak</h2>
+        <p>ClassLoader не може бути зібраний GC поки є посилання на будь-який з його класів або об'єктів. В hot-deploy сценаріях (Tomcat reload) — типова причина Metaspace OOM.</p>
+        <div class="code"><span class="cm">// Причини ClassLoader leak:</span>
+<span class="cm">// 1. ThreadLocal з об'єктом завантаженим цим CL</span>
+<span class="kw">static</span> <span class="cls">ThreadLocal</span>&lt;<span class="cls">MyClass</span>&gt; tl = <span class="kw">new</span> <span class="cls">ThreadLocal</span>&lt;&gt;();
+<span class="cm">// Якщо потік живе довше ніж webapp — CL не збереться</span>
+
+<span class="cm">// 2. Static поле в загальній бібліотеці посилається на webapp клас</span>
+<span class="kw">static</span> <span class="cls">List</span>&lt;<span class="cls">Listener</span>&gt; listeners = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();
+<span class="cm">// listener з webapp CL → CL не збереться після undeploy</span>
+
+<span class="cm">// 3. Кеш з сильними посиланнями на класи</span>
+
+<span class="cm">// Діагностика:</span>
+<span class="cm">// jmap -clstats &lt;pid&gt;  — статистика ClassLoader</span>
+<span class="cm">// VisualVM → Classes → ClassLoader statistics</span>
+<span class="cm">// Heap dump → аналіз ClassLoader об'єктів</span></div>
+        <div class="callout callout-warn">
+          Симптом ClassLoader leak: після кожного hot-deploy Metaspace зростає і не звільняється. Врешті — <code>OutOfMemoryError: Metaspace</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: JIT levels -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-teal">JIT</span>
+        <h2>Інтерпретатор і JIT компілятор</h2>
+        <p>JVM спочатку інтерпретує bytecode, потім JIT компілює "гарячий" код у native machine code. Tiered Compilation — 5 рівнів.</p>
+        <div class="code"><span class="cm">// Tiered Compilation (default Java 8+)</span>
+<span class="cm">// Level 0: Interpreter — повільно, але починає одразу</span>
+<span class="cm">// Level 1: C1 compiled, no profiling</span>
+<span class="cm">// Level 2: C1 compiled, limited profiling</span>
+<span class="cm">// Level 3: C1 compiled, full profiling</span>
+<span class="cm">// Level 4: C2 compiled — агресивна оптимізація</span>
+
+<span class="cm">// Порогові значення (приблизно):</span>
+<span class="cm">// ~2000 invocations → C1</span>
+<span class="cm">// ~10000 invocations → C2</span>
+
+<span class="cm">// Флаги</span>
+-XX:+TieredCompilation        <span class="cm">// default on</span>
+-XX:CompileThreshold=10000    <span class="cm">// поріг для C2</span>
+-XX:+PrintCompilation         <span class="cm">// лог компіляції</span>
+-XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining  <span class="cm">// inlining</span></div>
+        <div class="callout callout-info">
+          <strong>Warmup:</strong> перші хвилини після старту JVM — код ще інтерпретується або компілюється C1. C2 оптимізації вступають пізніше. Benchmark без warmup — некоректний benchmark.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: JIT optimizations -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-teal">JIT</span>
+        <h2>Ключові JIT оптимізації</h2>
+        <h3>Inlining</h3>
+        <p>Маленькі методи вбудовуються в місце виклику. Усуває overhead виклику і відкриває більше оптимізацій.</p>
+        <div class="code"><span class="cm">// До inlining:</span>
+<span class="kw">int</span> result = add(a, b);
+
+<span class="cm">// Після inlining (концептуально):</span>
+<span class="kw">int</span> result = a + b;  <span class="cm">// код add() вбудовано</span>
+
+<span class="cm">// Ліміт inlining: метод &lt;35 bytecodes (приблизно)</span>
+-XX:MaxInlineSize=35
+-XX:FreqInlineSize=325</div>
+        <hr class="sep">
+        <h3>Loop unrolling</h3>
+        <div class="code"><span class="cm">// JIT може розгорнути цикл:</span>
+<span class="cm">// for (i=0; i&lt;4; i++) process(a[i]);</span>
+<span class="cm">// → process(a[0]); process(a[1]); process(a[2]); process(a[3]);</span>
+<span class="cm">// Менше перевірок умови, краще vectorization</span></div>
+        <hr class="sep">
+        <h3>Dead code elimination</h3>
+        <div class="code"><span class="cm">// JIT видаляє код що ніколи не виконується</span>
+<span class="kw">if</span> (<span class="kw">false</span>) { veryExpensiveComputation(); }
+<span class="cm">// → порожньо</span>
+
+<span class="cm">// Небезпека для мікро-бенчмарків: JIT може видалити</span>
+<span class="cm">// весь код що не має observable side effects!</span>
+<span class="cm">// Рішення: JMH (Java Microbenchmark Harness)</span></div>
+      </div>
+    </div>
+
+    <!-- 5: Escape Analysis -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-green">escape analysis</span>
+        <h2>Escape Analysis</h2>
+        <p>JIT аналізує чи об'єкт "виходить" за межі методу або потоку. Якщо ні — може оптимізувати розміщення.</p>
+        <div class="code"><span class="cm">// Об'єкт не "escapes" метод:</span>
+<span class="kw">void</span> compute() {
+    <span class="cls">Point</span> p = <span class="kw">new</span> <span class="cls">Point</span>(<span class="num">1</span>, <span class="num">2</span>); <span class="cm">// p не повертається і не зберігається</span>
+    <span class="kw">int</span> dist = p.distance();
+    use(dist);
+}
+<span class="cm">// JIT може: Stack Allocation або Scalar Replacement</span>
+
+<span class="cm">// Stack Allocation: p живе у Stack, не в Heap</span>
+<span class="cm">// → немає GC pressure, швидко</span>
+
+<span class="cm">// Scalar Replacement: p "розкладається" на примітиви</span>
+<span class="cm">// → int x = 1; int y = 2; (без об'єкту взагалі!)</span>
+
+<span class="cm">// Перевірити EA оптимізацію:</span>
+-XX:+DoEscapeAnalysis     <span class="cm">// default on</span>
+-XX:+EliminateAllocations <span class="cm">// scalar replacement, default on</span>
+
+<span class="cm">// Lock elision: якщо об'єкт не escapes → synchronized видаляється!</span>
+<span class="kw">synchronized</span>(localObject) { ... }
+<span class="cm">// localObject не escapes → lock elision</span></div>
+        <div class="callout callout-ok">
+          Lock elision — практичний наслідок EA. <code>StringBuffer</code> (synchronized) у локальній змінній компілюється так само ефективно як <code>StringBuilder</code>, бо JIT видаляє всі локи.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: warmup/deopt -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-amber">нюанси</span>
+        <h2>Warmup і Deoptimization</h2>
+        <h3>Warmup</h3>
+        <p>JVM потребує часу щоб "прогрітись". Перші запити повільніші бо код ще інтерпретується або компілюється. Для мікросервісів — проблема при cold start.</p>
+        <div class="code"><span class="cm">// CDS (Class Data Sharing) — прискорює старт</span>
+<span class="cm">// Зберігає метадані класів у shared archive</span>
+-XX:+UseAppCDS
+-XX:SharedArchiveFile=app.jsa
+
+<span class="cm">// AOT (Ahead of Time) — Java 9-16, experimental</span>
+<span class="cm">// GraalVM Native Image — компіляція у native binary</span>
+<span class="cm">// (instant startup, менше пам'яті, але без JIT оптимізацій)</span></div>
+        <hr class="sep">
+        <h3>Deoptimization</h3>
+        <p>JIT оптимізує на основі профілю (спекулятивно). Якщо припущення порушується — відбувається deopt: повернення до інтерпретатора або перекомпіляція.</p>
+        <div class="code"><span class="cm">// Приклад: JIT припустив що list завжди ArrayList</span>
+<span class="cm">// Оптимізував виклик без vtable lookup</span>
+<span class="cm">// Потім з'явився LinkedList → deoptimization</span>
+
+<span class="cm">// Megamorphic call site: &gt;2 типів → JIT не може optimizuvati</span>
+<span class="kw">void</span> process(<span class="cls">Shape</span> shape) { shape.area(); }
+<span class="cm">// Якщо викликається з Circle, Rect, Triangle → megamorphic</span>
+
+<span class="cm">// Виявити deopt:</span>
+-XX:+TraceDeoptimization
+<span class="cm">// або JFR event: jdk.Deoptimization</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> Parent Delegation Model (навіщо), Tiered Compilation (C1 + C2), Escape Analysis → Stack Allocation + Scalar Replacement + Lock Elision. Deoptimization — спекулятивні оптимізації JIT.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

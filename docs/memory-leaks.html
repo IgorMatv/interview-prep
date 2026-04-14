@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Leaks: причини і profiling — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,206,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--red);background:var(--red-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--red)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Memory Leaks: причини і profiling</h1>
+  <span class="header-tag">JVM Internals</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Причини leak</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Що таке memory leak в Java</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Static поля і колекції</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>ThreadLocal leak</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Listener і callback leak</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Inner class і closure</div>
+    <div class="sidebar-section">Інструменти</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Heap dump і аналіз</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>JFR і VisualVM</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-red">основи</span>
+        <h2>Що таке memory leak в Java</h2>
+        <p>Memory leak у Java — це об'єкти що більше не потрібні, але GC не може їх зібрати бо є strong reference з "живого" коду. Heap росте, врешті — <code>OutOfMemoryError</code>.</p>
+        <div class="code"><span class="cm">// GC roots — звідки починається reachability аналіз:</span>
+<span class="cm">// - Static поля</span>
+<span class="cm">// - Локальні змінні активних методів (Stack frames)</span>
+<span class="cm">// - Активні Thread об'єкти</span>
+<span class="cm">// - JNI references</span>
+
+<span class="cm">// Leak = об'єкт досяжний від GC root, але більше не потрібен</span>
+<span class="kw">static</span> <span class="cls">List</span>&lt;<span class="cls">Object</span>&gt; CACHE = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();
+
+<span class="kw">void</span> process(<span class="cls">Object</span> obj) {
+    CACHE.add(obj);  <span class="cm">// obj ніколи не видаляється → leak</span>
+}</div>
+        <div class="callout callout-info">
+          <strong>Симптоми:</strong> heap поступово зростає з часом, Full GC стає частішим і менш ефективним, врешті <code>java.lang.OutOfMemoryError: Java heap space</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: static -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-red">причина</span>
+        <h2>Static поля і необмежені колекції</h2>
+        <p>Static поля живуть весь час роботи JVM. Колекція в static полі що тільки росте і ніколи не очищається — найпоширеніший leak.</p>
+        <div class="code"><span class="cm">// ПОГАНО: static кеш без eviction</span>
+<span class="kw">static final</span> <span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; CACHE = <span class="kw">new</span> <span class="cls">HashMap</span>&lt;&gt;();
+
+<span class="kw">void</span> handle(<span class="cls">Request</span> req) {
+    CACHE.put(req.getId(), process(req)); <span class="cm">// ніколи не видаляємо</span>
+}
+
+<span class="cm">// Рішення 1: обмежений кеш з eviction</span>
+<span class="kw">static final</span> <span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; CACHE =
+    <span class="kw">new</span> <span class="cls">LinkedHashMap</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt;(<span class="num">100</span>, <span class="num">0.75f</span>, <span class="kw">true</span>) {
+        <span class="kw">protected boolean</span> removeEldestEntry(<span class="cls">Map.Entry</span>&lt;?,?&gt; e) {
+            <span class="kw">return</span> size() > <span class="num">100</span>;
+        }
+    };
+
+<span class="cm">// Рішення 2: WeakHashMap — ключ = WeakReference</span>
+<span class="cls">Map</span>&lt;<span class="cls">Object</span>, <span class="cls">Data</span>&gt; cache = <span class="kw">new</span> <span class="cls">WeakHashMap</span>&lt;&gt;();
+<span class="cm">// entry видаляється коли немає strong ref на ключ</span>
+
+<span class="cm">// Рішення 3: Caffeine/Guava з TTL і max size</span>
+<span class="cls">Cache</span>&lt;<span class="cls">K</span>, <span class="cls">V</span>&gt; cache = <span class="cls">Caffeine</span>.newBuilder()
+    .maximumSize(<span class="num">1000</span>)
+    .expireAfterWrite(<span class="num">10</span>, <span class="cls">TimeUnit</span>.MINUTES)
+    .build();</div>
+      </div>
+    </div>
+
+    <!-- 2: ThreadLocal -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-red">причина</span>
+        <h2>ThreadLocal leak</h2>
+        <p>ThreadLocal зберігає значення per-thread. Якщо потік з ThreadPoolExecutor не видаляє значення після задачі — воно залишається і може "протікати" на наступну задачу або просто займати пам'ять.</p>
+        <div class="code"><span class="cm">// Типова помилка: ThreadLocal у thread pool без cleanup</span>
+<span class="kw">static final</span> <span class="cls">ThreadLocal</span>&lt;<span class="cls">UserContext</span>&gt; CTX = <span class="kw">new</span> <span class="cls">ThreadLocal</span>&lt;&gt;();
+
+<span class="kw">void</span> handleRequest(<span class="cls">User</span> user) {
+    CTX.set(<span class="kw">new</span> <span class="cls">UserContext</span>(user));
+    doWork();
+    <span class="cm">// ЗАБУЛИ CTX.remove() → значення залишається в потоці</span>
+}
+
+<span class="cm">// Правильно: завжди remove() у finally</span>
+<span class="kw">void</span> handleRequest(<span class="cls">User</span> user) {
+    CTX.set(<span class="kw">new</span> <span class="cls">UserContext</span>(user));
+    <span class="kw">try</span> {
+        doWork();
+    } <span class="kw">finally</span> {
+        CTX.remove(); <span class="cm">// обов'язково!</span>
+    }
+}</div>
+        <div class="callout callout-warn">
+          ThreadLocal в thread pool: потоки повертаються в пул і використовуються знову. Без <code>remove()</code> наступна задача може побачити дані попередньої. І це security issue, не тільки memory leak.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: listener -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-red">причина</span>
+        <h2>Listener і callback leak</h2>
+        <p>Об'єкт реєструє себе як listener, але забуває зареєструватись. Publisher тримає strong reference → об'єкт не збирається GC навіть коли "логічно" вже не потрібен.</p>
+        <div class="code"><span class="cm">// ПОГАНО: listener ніколи не видаляється</span>
+<span class="kw">class</span> <span class="cls">Widget</span> {
+    <span class="cls">Widget</span>(<span class="cls">EventBus</span> bus) {
+        bus.subscribe(this); <span class="cm">// bus тримає strong ref на Widget</span>
+    }
+    <span class="cm">// Widget "живе" поки bus не видалить його</span>
+}
+
+<span class="cm">// Правильно: unsubscribe при завершенні</span>
+<span class="kw">class</span> <span class="cls">Widget</span> <span class="kw">implements</span> <span class="cls">AutoCloseable</span> {
+    <span class="kw">private final</span> <span class="cls">EventBus</span> bus;
+
+    <span class="cls">Widget</span>(<span class="cls">EventBus</span> bus) {
+        <span class="kw">this</span>.bus = bus;
+        bus.subscribe(<span class="kw">this</span>);
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> close() {
+        bus.unsubscribe(<span class="kw">this</span>); <span class="cm">// прибираємо себе</span>
+    }
+}
+
+<span class="cm">// Альтернатива: WeakReference listeners</span>
+<span class="cm">// EventBus тримає WeakReference на listeners</span>
+<span class="cm">// GC може зібрати listener навіть без unsubscribe</span></div>
+      </div>
+    </div>
+
+    <!-- 4: inner class -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-red">причина</span>
+        <h2>Inner class і неявне посилання</h2>
+        <p>Non-static inner class неявно тримає посилання на outer class instance. Якщо inner class "виходить" назовні — outer не збереться GC.</p>
+        <div class="code"><span class="cm">// Non-static inner class: неявний this$0</span>
+<span class="kw">class</span> <span class="cls">Outer</span> {
+    <span class="kw">private byte</span>[] bigData = <span class="kw">new byte</span>[<span class="num">1024</span> * <span class="num">1024</span>]; <span class="cm">// 1MB</span>
+
+    <span class="kw">class</span> <span class="cls">Inner</span> <span class="kw">implements</span> <span class="cls">Runnable</span> {
+        <span class="ann">@Override</span>
+        <span class="kw">public void</span> run() { <span class="cls">System</span>.out.println(<span class="str">"done"</span>); }
+        <span class="cm">// Inner неявно тримає Outer.this → bigData не збереться</span>
+    }
+}
+
+<span class="cls">Outer</span> outer = <span class="kw">new</span> <span class="cls">Outer</span>();
+executor.submit(<span class="kw">new</span> <span class="cls">Outer</span>.<span class="cls">Inner</span>()); <span class="cm">// outer тримається executor'ом!</span>
+outer = <span class="kw">null</span>; <span class="cm">// не допомагає — executor тримає Inner → Outer</span>
+
+<span class="cm">// Рішення: static inner class (немає посилання на Outer)</span>
+<span class="kw">static class</span> <span class="cls">Inner</span> <span class="kw">implements</span> <span class="cls">Runnable</span> {
+    <span class="ann">@Override</span> <span class="kw">public void</span> run() { ... }
+}
+
+<span class="cm">// Або lambda/anonymous class обережно з capture</span>
+executor.submit(() -> doWork()); <span class="cm">// лямбда не захоплює this якщо не використовує</span></div>
+      </div>
+    </div>
+
+    <!-- 5: heap dump -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-teal">інструменти</span>
+        <h2>Heap dump і аналіз</h2>
+        <div class="code"><span class="cm">// Отримати heap dump</span>
+jmap -dump:format=b,file=heap.hprof &lt;pid&gt;
+jcmd &lt;pid&gt; GC.heap_dump /tmp/heap.hprof
+
+<span class="cm">// Автоматично при OOM</span>
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=/var/log/heap.hprof
+
+<span class="cm">// Аналізатори heap dump:</span>
+<span class="cm">// Eclipse MAT (Memory Analyzer Tool) — найпотужніший</span>
+<span class="cm">// VisualVM — простіший, вбудований</span>
+<span class="cm">// IntelliJ IDEA — вбудований аналізатор</span>
+<span class="cm">// JDK Mission Control (JMC)</span></div>
+        <div class="callout callout-info">
+          <strong>Алгоритм аналізу в MAT:</strong> відкрити heap dump → Leak Suspects Report (автоматично знаходить підозрілі об'єкти) → Dominator Tree (які об'єкти утримують найбільше пам'яті) → Path to GC Roots (чому об'єкт не збирається).
+        </div>
+        <hr class="sep">
+        <h3>Ключові запити в MAT</h3>
+        <div class="code"><span class="cm">// OQL (Object Query Language) в MAT:</span>
+SELECT * FROM java.util.HashMap WHERE size > 10000
+SELECT * FROM java.lang.ThreadLocal$ThreadLocalMap$Entry
+<span class="cm">// Знайти великі масиви:</span>
+SELECT * FROM byte[] WHERE size > 1048576</div>
+      </div>
+    </div>
+
+    <!-- 6: JFR VisualVM -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-teal">інструменти</span>
+        <h2>JFR і VisualVM</h2>
+        <h3>Java Flight Recorder (JFR)</h3>
+        <p>Вбудований в JDK профайлер з мінімальним overhead (~1%). Записує events: GC, allocation, thread, CPU. Найкращий для продакшн профілювання.</p>
+        <div class="code"><span class="cm">// Запустити JFR профілювання</span>
+jcmd &lt;pid&gt; JFR.start name=rec duration=60s filename=rec.jfr
+<span class="cm">// або з флагами при старті:</span>
+-XX:StartFlightRecording=duration=60s,filename=rec.jfr
+
+<span class="cm">// Аналіз у JDK Mission Control (JMC):</span>
+<span class="cm">// Memory → Object Allocation — де і що алокується</span>
+<span class="cm">// GC → GC Events — тривалість і частота GC</span>
+<span class="cm">// Threads → Thread States — де блокуються потоки</span></div>
+        <hr class="sep">
+        <h3>Корисні jcmd команди</h3>
+        <div class="code">jcmd &lt;pid&gt; VM.flags              <span class="cm">// JVM флаги</span>
+jcmd &lt;pid&gt; GC.heap_info          <span class="cm">// heap regions</span>
+jcmd &lt;pid&gt; Thread.print          <span class="cm">// thread dump</span>
+jcmd &lt;pid&gt; VM.native_memory      <span class="cm">// native memory (треба -XX:+NativeMemoryTracking=summary)</span>
+jcmd &lt;pid&gt; GC.class_stats        <span class="cm">// статистика класів</span>
+
+<span class="cm">// jstat — моніторинг GC</span>
+jstat -gcutil &lt;pid&gt; 1000 10      <span class="cm">// кожну секунду, 10 разів</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> типові причини leak (static колекції, ThreadLocal без remove, listener без unsubscribe, non-static inner class), діагностика: heap dump + MAT, JFR для production profiling.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

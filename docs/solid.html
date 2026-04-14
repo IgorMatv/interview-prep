@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOLID — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--amber);background:var(--amber-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--amber)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin:.75rem 0}
+.compare-col{background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);padding:.75rem 1rem}
+.compare-col h4{font-size:12px;font-weight:500;color:var(--muted);margin-bottom:.5rem;font-family:var(--font-mono)}
+.compare-col.bad{border-color:rgba(240,90,90,0.25)}.compare-col.good{border-color:rgba(78,202,139,0.3)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>SOLID</h1>
+  <span class="header-tag">Design</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">SOLID</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>S — Single Responsibility</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>O — Open/Closed</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>L — Liskov Substitution</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>I — Interface Segregation</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>D — Dependency Inversion</div>
+    <div class="sidebar-section">Огляд</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Порушення і сигнали</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>SOLID у Spring проекті</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0: SRP -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-amber">S</span>
+        <h2>Single Responsibility Principle</h2>
+        <p>Клас повинен мати тільки одну причину для зміни. Один клас — одна відповідальність. Не "один метод", а одна <em>зона відповідальності</em>.</p>
+        <div class="compare">
+          <div class="compare-col bad">
+            <h4>порушення</h4>
+            <div class="code" style="margin:0;font-size:11.5px"><span class="kw">class</span> <span class="cls">UserService</span> {
+  <span class="cm">// бізнес-логіка</span>
+  createUser(dto) { ... }
+  <span class="cm">// email — не його справа</span>
+  sendWelcomeEmail() { ... }
+  <span class="cm">// PDF — не його справа</span>
+  generateReport() { ... }
+}</div>
+          </div>
+          <div class="compare-col good">
+            <h4>добре</h4>
+            <div class="code" style="margin:0;font-size:11.5px"><span class="kw">class</span> <span class="cls">UserService</span> {
+  createUser(dto) { ... }
+}
+<span class="kw">class</span> <span class="cls">EmailService</span> {
+  sendWelcome(user) { ... }
+}
+<span class="kw">class</span> <span class="cls">ReportService</span> {
+  generatePdf(user) { ... }
+}</div>
+          </div>
+        </div>
+        <div class="callout callout-info">
+          <strong>Практичний тест:</strong> якщо можеш описати що робить клас без слова "і" — SRP виконано. "UserService реєструє користувачів <strong>і</strong> надсилає email <strong>і</strong> генерує звіти" — порушення.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: OCP -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-amber">O</span>
+        <h2>Open/Closed Principle</h2>
+        <p>Відкритий для розширення, закритий для модифікації. Новий функціонал — через додавання нових класів, а не зміну існуючих.</p>
+        <div class="compare">
+          <div class="compare-col bad">
+            <h4>порушення — switch/if</h4>
+            <div class="code" style="margin:0;font-size:11px"><span class="kw">class</span> <span class="cls">NotificationSender</span> {
+  send(<span class="cls">String</span> type, msg) {
+    <span class="kw">if</span> (type.equals(<span class="str">"email"</span>))
+      sendEmail(msg);
+    <span class="kw">else if</span> (type.equals(<span class="str">"sms"</span>))
+      sendSms(msg);
+    <span class="cm">// нова нотифікація → правимо</span>
+  }
+}</div>
+          </div>
+          <div class="compare-col good">
+            <h4>добре — поліморфізм</h4>
+            <div class="code" style="margin:0;font-size:11px"><span class="kw">interface</span> <span class="cls">Notification</span> {
+  <span class="kw">void</span> send(<span class="cls">String</span> msg);
+}
+<span class="kw">class</span> <span class="cls">EmailNotification</span>
+  <span class="kw">implements</span> <span class="cls">Notification</span> { ... }
+<span class="kw">class</span> <span class="cls">SmsNotification</span>
+  <span class="kw">implements</span> <span class="cls">Notification</span> { ... }
+<span class="cm">// нова → новий клас</span></div>
+          </div>
+        </div>
+        <div class="callout callout-ok">
+          OCP — це і є Strategy патерн. Замінюємо if/else на ієрархію класів з поліморфізмом.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: LSP -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-amber">L</span>
+        <h2>Liskov Substitution Principle</h2>
+        <p>Підклас має бути взаємозамінним з батьківським класом. Код що використовує базовий тип має працювати з будь-яким підтипом без змін і без сюрпризів.</p>
+        <div class="code"><span class="cm">// Класичне порушення LSP: Rectangle → Square</span>
+<span class="kw">class</span> <span class="cls">Rectangle</span> {
+    <span class="kw">protected int</span> width, height;
+    <span class="kw">void</span> setWidth(<span class="kw">int</span> w) { <span class="kw">this</span>.width = w; }
+    <span class="kw">void</span> setHeight(<span class="kw">int</span> h) { <span class="kw">this</span>.height = h; }
+    <span class="kw">int</span> area() { <span class="kw">return</span> width * height; }
+}
+
+<span class="kw">class</span> <span class="cls">Square</span> <span class="kw">extends</span> <span class="cls">Rectangle</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">void</span> setWidth(<span class="kw">int</span> w) { <span class="kw">this</span>.width = <span class="kw">this</span>.height = w; } <span class="cm">// ламає очікування!</span>
+}
+
+<span class="cm">// Тест що проходить для Rectangle, падає для Square:</span>
+<span class="cls">Rectangle</span> r = <span class="kw">new</span> <span class="cls">Square</span>();
+r.setWidth(<span class="num">4</span>); r.setHeight(<span class="num">5</span>);
+assert r.area() == <span class="num">20</span>; <span class="cm">// провал! Square дає 25</span></div>
+        <div class="callout callout-warn">
+          LSP порушується коли підклас підсилює передумови (вимагає більше від caller) або послаблює постумови (гарантує менше). Рішення: composition замість inheritance або переосмислити ієрархію.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: ISP -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-amber">I</span>
+        <h2>Interface Segregation Principle</h2>
+        <p>Клієнт не повинен залежати від методів які він не використовує. Великий інтерфейс — розбити на менші і специфічні.</p>
+        <div class="compare">
+          <div class="compare-col bad">
+            <h4>товстий інтерфейс</h4>
+            <div class="code" style="margin:0;font-size:11px"><span class="kw">interface</span> <span class="cls">Worker</span> {
+  work();
+  eat();
+  sleep();
+}
+<span class="kw">class</span> <span class="cls">Robot</span> <span class="kw">implements</span> <span class="cls">Worker</span> {
+  work() { ... }
+  eat() { <span class="kw">throw new</span> <span class="cls">UOE</span>(); } <span class="cm">// !</span>
+  sleep() { <span class="kw">throw new</span> <span class="cls">UOE</span>(); } <span class="cm">// !</span>
+}</div>
+          </div>
+          <div class="compare-col good">
+            <h4>розділені інтерфейси</h4>
+            <div class="code" style="margin:0;font-size:11px"><span class="kw">interface</span> <span class="cls">Workable</span> { work(); }
+<span class="kw">interface</span> <span class="cls">Feedable</span>  { eat(); }
+<span class="kw">interface</span> <span class="cls">Sleepable</span> { sleep(); }
+
+<span class="kw">class</span> <span class="cls">Human</span>
+  <span class="kw">implements</span> <span class="cls">Workable</span>,
+             <span class="cls">Feedable</span>, <span class="cls">Sleepable</span> {}
+<span class="kw">class</span> <span class="cls">Robot</span> <span class="kw">implements</span> <span class="cls">Workable</span> {}</div>
+          </div>
+        </div>
+        <div class="callout callout-info">
+          Spring Data: <code>JpaRepository</code> extends <code>PagingAndSortingRepository</code> extends <code>CrudRepository</code> extends <code>Repository</code>. Можна залежати від мінімального інтерфейсу — класичний ISP.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: DIP -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-amber">D</span>
+        <h2>Dependency Inversion Principle</h2>
+        <p>Залежати від абстракцій, не від конкретних реалізацій. High-level модулі не повинні залежати від low-level. Обидва залежать від абстракцій.</p>
+        <div class="compare">
+          <div class="compare-col bad">
+            <h4>порушення</h4>
+            <div class="code" style="margin:0;font-size:11px"><span class="kw">class</span> <span class="cls">RouteService</span> {
+  <span class="cm">// залежність від конкретного</span>
+  <span class="kw">private</span> <span class="cls">MySQLRouteRepo</span> repo =
+    <span class="kw">new</span> <span class="cls">MySQLRouteRepo</span>();
+  <span class="cm">// не можна замінити без правки</span>
+}</div>
+          </div>
+          <div class="compare-col good">
+            <h4>правильно</h4>
+            <div class="code" style="margin:0;font-size:11px"><span class="kw">class</span> <span class="cls">RouteService</span> {
+  <span class="cm">// залежність від абстракції</span>
+  <span class="kw">private final</span> <span class="cls">RouteRepository</span> repo;
+
+  <span class="cls">RouteService</span>(<span class="cls">RouteRepository</span> r) {
+    <span class="kw">this</span>.repo = r; <span class="cm">// DI</span>
+  }
+}</div>
+          </div>
+        </div>
+        <div class="callout callout-ok">
+          Spring DI реалізує DIP: всі залежності через інтерфейси, Spring сам вирішує яку конкретну реалізацію підставити. Тести легко замінюють реалізацію на mock.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: порушення -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-red">сигнали</span>
+        <h2>Сигнали порушення SOLID</h2>
+        <ul>
+          <li><strong>SRP:</strong> клас "God object" — знає і робить все. Метод на 200 рядків. "і" у описі класу.</li>
+          <li><strong>OCP:</strong> switch/if по типу об'єкту. При додаванні нового типу — правиш існуючий код у кількох місцях.</li>
+          <li><strong>LSP:</strong> <code>UnsupportedOperationException</code> в реалізації методу інтерфейсу. <code>instanceof</code> перед використанням підтипу.</li>
+          <li><strong>ISP:</strong> реалізація кидає <code>UnsupportedOperationException</code> або залишає методи порожніми. "Stub" реалізації.</li>
+          <li><strong>DIP:</strong> <code>new ConcreteClass()</code> всередині бізнес-логіки. Неможливо написати unit test без реальної бази даних.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 6: у Spring -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-green">практика</span>
+        <h2>SOLID у Spring проекті</h2>
+        <div class="code"><span class="cm">// SRP: кожен шар має одну відповідальність</span>
+<span class="ann">@RestController</span>  <span class="cm">// HTTP mapping тільки</span>
+<span class="ann">@Service</span>          <span class="cm">// бізнес-логіка тільки</span>
+<span class="ann">@Repository</span>       <span class="cm">// DB доступ тільки</span>
+
+<span class="cm">// OCP: нові стратегії без зміни існуючого коду</span>
+<span class="kw">interface</span> <span class="cls">RoutingStrategy</span> { ... }
+<span class="ann">@Component</span> <span class="kw">class</span> <span class="cls">NearestNeighbor</span> <span class="kw">implements</span> <span class="cls">RoutingStrategy</span> { ... }
+<span class="ann">@Component</span> <span class="kw">class</span> <span class="cls">TwoOpt</span>          <span class="kw">implements</span> <span class="cls">RoutingStrategy</span> { ... }
+<span class="cm">// нова стратегія → новий @Component</span>
+
+<span class="cm">// DIP: залежність від інтерфейсів через @Autowired</span>
+<span class="ann">@Autowired</span> <span class="cls">PoiRepository</span> repo;   <span class="cm">// не JpaPoiRepository</span>
+<span class="ann">@Autowired</span> <span class="cls">RouteService</span> svc;     <span class="cm">// не RouteServiceImpl</span>
+
+<span class="cm">// ISP: Spring Data дозволяє залежати від мінімального</span>
+<span class="kw">interface</span> <span class="cls">PoiSummaryRepository</span> <span class="kw">extends</span> <span class="cls">Repository</span>&lt;<span class="cls">Poi</span>, <span class="cls">Long</span>&gt; {
+    <span class="cls">List</span>&lt;<span class="cls">Poi</span>&gt; findByCity(<span class="cls">String</span> city); <span class="cm">// тільки потрібні методи</span>
+}</div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> SRP — одна причина для зміни (не один метод), OCP через Strategy/поліморфізм, LSP — Rectangle/Square антиприклад, ISP — товсті інтерфейси ламають клієнтів, DIP — залежати від абстракцій = Spring DI.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

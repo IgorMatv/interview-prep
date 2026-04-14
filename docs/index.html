@@ -79,6 +79,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 <div class="hero">
   <div class="hero-label">Java Senior · 3 місяці</div>
   <h1>Interview Prep</h1>
+  <p>Інтерактивні шпаргалки з кодом, схемами і нюансами. Теми з роадмапу — кожна окремою сторінкою.</p>
   <div class="hero-stats">
     <div class="stat">готово <span id="done-count">0</span></div>
     <div class="stat">всього <span id="total-count">0</span></div>
@@ -208,6 +209,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div class="card-chips"><span class="chip">ConcurrentHashMap</span><span class="chip">Loom</span><span class="chip">VT</span></div>
       </a>
 
+      <a href="concurrent-collections.html" class="card" style="--accent:var(--blue)">
+        <div class="card-tag t-blue">Collections</div>
+        <h3>Concurrent Collections</h3>
+        <p>Queue, Deque, BlockingQueue, CopyOnWriteArrayList. Producer-Consumer.</p>
+        <div class="card-chips"><span class="chip">BlockingQueue</span><span class="chip">ArrayDeque</span><span class="chip">CopyOnWrite</span></div>
+      </a>
+
     </div>
   </div>
 
@@ -221,54 +229,54 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
     </div>
     <div class="grid">
 
-      <div class="card wip" style="--accent:var(--amber)">
+      <a href="jvm-memory.html" class="card" style="--accent:var(--amber)">
         <div class="card-tag t-amber">JVM</div>
         <h3>JVM memory model</h3>
-        <p>heap, stack, metaspace, off-heap. Розподіл об'єктів.</p>
+        <p>heap, stack, metaspace, off-heap. Object layout, references.</p>
         <div class="card-chips"><span class="chip">heap</span><span class="chip">stack</span><span class="chip">metaspace</span></div>
-      </div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--amber)">
+      <a href="gc-g1-zgc.html" class="card" style="--accent:var(--amber)">
         <div class="card-tag t-amber">JVM</div>
         <h3>GC: G1 deep, ZGC basics</h3>
         <p>G1 regions, mixed GC, humongous objects. ZGC паузи.</p>
         <div class="card-chips"><span class="chip">G1</span><span class="chip">ZGC</span><span class="chip">regions</span><span class="chip">STW</span></div>
-      </div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--amber)">
+      <a href="classloading-jit.html" class="card" style="--accent:var(--amber)">
         <div class="card-tag t-amber">JVM</div>
         <h3>Class loading, JIT, escape analysis</h3>
-        <p>classloader hierarchy, JIT тири, scalar replacement.</p>
+        <p>classloader hierarchy, Parent Delegation, JIT тири, scalar replacement.</p>
         <div class="card-chips"><span class="chip">classloader</span><span class="chip">JIT</span><span class="chip">escape</span></div>
-      </div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--amber)">
+      <a href="memory-leaks.html" class="card" style="--accent:var(--amber)">
         <div class="card-tag t-amber">JVM</div>
         <h3>Memory leaks: причини і profiling</h3>
-        <p>типові причини, strong/weak/soft references, VisualVM, JFR.</p>
-        <div class="card-chips"><span class="chip">WeakRef</span><span class="chip">VisualVM</span><span class="chip">JFR</span></div>
-      </div>
+        <p>static, ThreadLocal, listener leak. Heap dump, MAT, JFR.</p>
+        <div class="card-chips"><span class="chip">WeakRef</span><span class="chip">MAT</span><span class="chip">JFR</span></div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--amber)">
+      <a href="reflection-annotations.html" class="card" style="--accent:var(--amber)">
         <div class="card-tag t-amber">Java</div>
         <h3>Reflection, Annotations</h3>
         <p>як Spring використовує reflection, custom annotations, retention.</p>
         <div class="card-chips"><span class="chip">reflection</span><span class="chip">annotation</span><span class="chip">retention</span></div>
-      </div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--amber)">
+      <a href="design-patterns.html" class="card" style="--accent:var(--amber)">
         <div class="card-tag t-amber">Design</div>
         <h3>Design Patterns: Strategy, Builder, Proxy</h3>
         <p>GoF патерни з прикладами з реального Java/Spring коду.</p>
         <div class="card-chips"><span class="chip">Strategy</span><span class="chip">Builder</span><span class="chip">Proxy</span></div>
-      </div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--amber)">
+      <a href="solid.html" class="card" style="--accent:var(--amber)">
         <div class="card-tag t-amber">Design</div>
         <h3>SOLID</h3>
         <p>5 принципів з Java прикладами, типові порушення.</p>
         <div class="card-chips"><span class="chip">SRP</span><span class="chip">OCP</span><span class="chip">LSP</span><span class="chip">ISP</span><span class="chip">DIP</span></div>
-      </div>
+      </a>
 
     </div>
   </div>

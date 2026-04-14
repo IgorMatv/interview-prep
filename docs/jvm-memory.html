@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JVM Memory Model — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--amber);background:var(--amber-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--amber)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem}
+.metric{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.9rem 1rem}
+.metric .val{font-size:18px;font-weight:600;color:var(--text);font-family:var(--font-mono)}.metric .lbl{font-size:11px;color:var(--muted);margin-top:3px}
+.mem-zone{border-radius:var(--radius-sm);padding:.75rem 1rem;margin:.4rem 0;border:1px solid var(--border)}
+.mz-heap{background:rgba(91,156,246,0.08);border-color:rgba(91,156,246,0.25)}
+.mz-stack{background:rgba(78,202,139,0.08);border-color:rgba(78,202,139,0.25)}
+.mz-meta{background:rgba(240,168,67,0.08);border-color:rgba(240,168,67,0.25)}
+.mz-native{background:rgba(167,139,246,0.08);border-color:rgba(167,139,246,0.25)}
+.mz-label{font-size:12px;font-family:var(--font-mono);font-weight:500;margin-bottom:.3rem}
+.mz-heap .mz-label{color:var(--blue)}.mz-stack .mz-label{color:var(--green)}.mz-meta .mz-label{color:var(--amber)}.mz-native .mz-label{color:var(--purple)}
+.mz-desc{font-size:12px;color:#9ea3b0}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>JVM Memory Model</h1>
+  <span class="header-tag">JVM Internals</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Регіони пам'яті</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Огляд регіонів</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Heap: Young і Old Gen</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Stack і Frame</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Metaspace</div>
+    <div class="sidebar-section">Об'єкти</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Object layout в heap</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>References типи</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Флаги і діагностика</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-amber">огляд</span>
+        <h2>Регіони пам'яті JVM</h2>
+        <div class="mem-zone mz-heap">
+          <div class="mz-label">Heap</div>
+          <div class="mz-desc">Об'єкти і масиви. Спільний для всіх потоків. GC управляє. Young Gen + Old Gen.</div>
+        </div>
+        <div class="mem-zone mz-stack">
+          <div class="mz-label">Stack (per thread)</div>
+          <div class="mz-desc">Stack frames: локальні змінні, operand stack, посилання на поточний метод. За замовчуванням ~512KB–1MB.</div>
+        </div>
+        <div class="mem-zone mz-meta">
+          <div class="mz-label">Metaspace (Java 8+)</div>
+          <div class="mz-desc">Метадані класів, bytecode, constant pool. Native memory, не heap. Замінив PermGen.</div>
+        </div>
+        <div class="mem-zone mz-native">
+          <div class="mz-label">Code Cache</div>
+          <div class="mz-desc">JIT-скомпільований native код. Обмежений, при переповненні JIT вимикається.</div>
+        </div>
+        <div class="mem-zone mz-native" style="background:rgba(62,207,207,0.08);border-color:rgba(62,207,207,0.25)">
+          <div class="mz-label" style="color:var(--teal)">Direct / Off-heap</div>
+          <div class="mz-desc">ByteBuffer.allocateDirect(), MappedByteBuffer. Поза heap — не збирається GC напряму.</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Ключові JVM флаги для розміру</h3>
+        <div class="code"><span class="cm">// Heap</span>
+-Xms512m          <span class="cm">// початковий heap</span>
+-Xmx2g            <span class="cm">// максимальний heap</span>
+
+<span class="cm">// Metaspace</span>
+-XX:MetaspaceSize=128m
+-XX:MaxMetaspaceSize=256m
+
+<span class="cm">// Thread stack</span>
+-Xss512k          <span class="cm">// розмір стеку кожного потоку</span>
+
+<span class="cm">// Code cache</span>
+-XX:ReservedCodeCacheSize=256m</div>
+      </div>
+    </div>
+
+    <!-- 1: Young/Old -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-blue">heap</span>
+        <h2>Heap: Young Generation і Old Generation</h2>
+        <p>Heap поділений на зони для ефективного GC. Більшість об'єктів живе коротко — Young Gen збирається часто і швидко.</p>
+        <div class="code"><span class="cm">// Young Generation (Minor GC)</span>
+<span class="cm">// ├── Eden: нові об'єкти створюються тут</span>
+<span class="cm">// ├── Survivor S0: вижили з Eden</span>
+<span class="cm">// └── Survivor S1: альтернативний survivor</span>
+<span class="cm">//</span>
+<span class="cm">// Old Generation (Major/Full GC)</span>
+<span class="cm">// └── Tenured: об'єкти що пережили N minor GC</span>
+
+<span class="cm">// Розміри (приблизно)</span>
+<span class="cm">// Young : Old = 1 : 2  (за замовчуванням)</span>
+-XX:NewRatio=<span class="num">2</span>        <span class="cm">// Old/Young ratio</span>
+-XX:SurvivorRatio=<span class="num">8</span>   <span class="cm">// Eden/Survivor ratio (8:1:1)</span></div>
+        <div class="callout callout-info">
+          <strong>Promotion:</strong> об'єкт переходить з Young → Old після N minor GC (за замовчуванням 15). Великі об'єкти (humongous) можуть одразу потрапити в Old. Налаштовується: <code>-XX:MaxTenuringThreshold=15</code>.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Minor GC vs Major GC vs Full GC</h3>
+        <div class="code"><span class="cm">// Minor GC: Young Gen тільки, часто, швидко (мс)</span>
+<span class="cm">// - Eden повна → очистити Eden + S0 → виживших → S1</span>
+<span class="cm">// - Stop-The-World, але дуже короткий</span>
+
+<span class="cm">// Major GC: Old Gen, рідко, повільно (сотні мс)</span>
+<span class="cm">// - спрацьовує коли Old Gen заповнена</span>
+
+<span class="cm">// Full GC: весь heap + Metaspace, найповільніший</span>
+<span class="cm">// - System.gc(), або коли Major не допоміг</span>
+<span class="cm">// - тривалий STW — уникай!</span></div>
+        <div class="callout callout-warn">
+          <code>System.gc()</code> — лише підказка JVM, не гарантія. У продакшн його не використовують. GC Overhead Limit Exceeded: JVM витрачає >98% часу на GC і звільняє <2% heap.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: Stack -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-green">stack</span>
+        <h2>Stack і Stack Frame</h2>
+        <p>Кожен потік має свій стек. При кожному виклику методу — новий Stack Frame. При поверненні — frame знімається. Переповнення → <code>StackOverflowError</code>.</p>
+        <div class="code"><span class="cm">// Що зберігається в Stack Frame:</span>
+<span class="cm">// - Локальні змінні (primitives + references)</span>
+<span class="cm">// - Operand stack (для обчислень)</span>
+<span class="cm">// - Frame data (constant pool ref, exception table)</span>
+
+<span class="cm">// Приклад: що де живе</span>
+<span class="kw">void</span> method() {
+    <span class="kw">int</span> x = <span class="num">42</span>;              <span class="cm">// у Stack Frame (primitive)</span>
+    <span class="cls">String</span> s = <span class="str">"hello"</span>;     <span class="cm">// посилання в Stack, об'єкт в Heap</span>
+    <span class="cls">Object</span> o = <span class="kw">new</span> <span class="cls">Object</span>(); <span class="cm">// посилання в Stack, об'єкт в Heap</span>
+}
+
+<span class="cm">// StackOverflowError: нескінченна рекурсія</span>
+<span class="kw">void</span> infinite() { infinite(); } <span class="cm">// StackOverflowError</span>
+
+<span class="cm">// Збільшити стек потоку</span>
+<span class="kw">new</span> <span class="cls">Thread</span>(<span class="kw">null</span>, task, <span class="str">"name"</span>, <span class="num">4</span> * <span class="num">1024</span> * <span class="num">1024</span>); <span class="cm">// 4MB</span></div>
+        <div class="callout callout-info">
+          <strong>Stack vs Heap:</strong> примітивні типи (int, long, double...) зберігаються у Stack Frame як значення. Об'єкти — завжди в Heap, у Stack лише посилання. Але Java не гарантує де саме зберігається примітив — JIT може помістити його в регістр CPU.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: Metaspace -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-amber">metaspace</span>
+        <h2>Metaspace (Java 8+)</h2>
+        <p>Замінив PermGen. Зберігає метадані класів: bytecode, constant pool, method descriptors, annotations. Розміщується у native memory (поза heap).</p>
+        <div class="code"><span class="cm">// PermGen (до Java 8) — фіксований розмір, часто OOM:</span>
+<span class="cm">// java.lang.OutOfMemoryError: PermGen space</span>
+-XX:MaxPermSize=<span class="num">256m</span>  <span class="cm">// застарілий флаг</span>
+
+<span class="cm">// Metaspace (Java 8+) — росте динамічно:</span>
+<span class="cm">// java.lang.OutOfMemoryError: Metaspace</span>
+-XX:MetaspaceSize=<span class="num">64m</span>     <span class="cm">// initial committed</span>
+-XX:MaxMetaspaceSize=<span class="num">256m</span> <span class="cm">// ліміт (за замовч. необмежений!)</span>
+
+<span class="cm">// Що займає Metaspace:</span>
+<span class="cm">// - Class metadata (bytecode, vtable)</span>
+<span class="cm">// - Constant pool</span>
+<span class="cm">// - Method descriptors</span>
+<span class="cm">// - Annotations</span>
+<span class="cm">// - НЕ: String literals (вони в Heap, String Pool)</span></div>
+        <div class="callout callout-warn">
+          Без <code>-XX:MaxMetaspaceSize</code> Metaspace необмежений — може з'їсти всю нативну пам'ять процесу. Завжди встановлюй ліміт у продакшн. Metaspace leak — симптом: класи не вивантажуються, зазвичай через ClassLoader leak.
+        </div>
+      </div>
+      <div class="card">
+        <h3>String Pool (String Interning)</h3>
+        <div class="code"><span class="cm">// String literals — автоматично інтернуються</span>
+<span class="cls">String</span> a = <span class="str">"hello"</span>;      <span class="cm">// з String Pool</span>
+<span class="cls">String</span> b = <span class="str">"hello"</span>;      <span class="cm">// той самий об'єкт</span>
+a == b; <span class="cm">// true (same reference)</span>
+
+<span class="cls">String</span> c = <span class="kw">new</span> <span class="cls">String</span>(<span class="str">"hello"</span>); <span class="cm">// новий об'єкт в heap</span>
+a == c; <span class="cm">// false</span>
+a.equals(c); <span class="cm">// true</span>
+
+<span class="cm">// String Pool в Heap (Java 7+, раніше був у PermGen)</span>
+c.intern(); <span class="cm">// додає в pool або повертає існуючий</span></div>
+      </div>
+    </div>
+
+    <!-- 4: Object layout -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-blue">object layout</span>
+        <h2>Розташування об'єкта в heap</h2>
+        <p>Кожен Java об'єкт в heap має фіксований header + поля. Header містить mark word (hashcode, lock state, GC age) і class pointer.</p>
+        <div class="code"><span class="cm">// Object header (64-bit JVM, без CompressedOops):</span>
+<span class="cm">// Mark word:     8 байт (hashcode, lock, GC age)</span>
+<span class="cm">// Class pointer: 8 байт (посилання на Class метадані)</span>
+<span class="cm">// ──────────────────────────────────────────────</span>
+<span class="cm">// Мінімум об'єкт: 16 байт (тільки header, без полів)</span>
+
+<span class="cm">// З CompressedOops (-XX:+UseCompressedOops, default on &lt;32GB heap):</span>
+<span class="cm">// Class pointer: 4 байт → header = 12 байт</span>
+<span class="cm">// + padding до кратного 8</span>
+
+<span class="cm">// Приклад: Integer object</span>
+<span class="cm">// header: 12 байт</span>
+<span class="cm">// int value: 4 байт</span>
+<span class="cm">// ─────────────────</span>
+<span class="cm">// Разом: 16 байт  (vs 4 байти для int примітиву!)</span></div>
+        <div class="callout callout-info">
+          Boxing overhead: <code>int</code> = 4 байти, <code>Integer</code> = 16 байт. При мільйонах елементів різниця між <code>int[]</code> і <code>Integer[]</code> — в 4 рази по пам'яті, плюс GC pressure.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: References -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-teal">references</span>
+        <h2>Типи посилань</h2>
+        <p>Java має 4 типи посилань — відрізняються тим коли GC може зібрати об'єкт.</p>
+        <div class="code"><span class="cm">// Strong: звичайне посилання — GC не чіпає</span>
+<span class="cls">Object</span> obj = <span class="kw">new</span> <span class="cls">Object</span>(); <span class="cm">// strong reference</span>
+
+<span class="cm">// SoftReference: збирається при нестачі пам'яті</span>
+<span class="cm">// Ідеально для memory-sensitive cache</span>
+<span class="cls">SoftReference</span>&lt;<span class="cls">Image</span>&gt; ref = <span class="kw">new</span> <span class="cls">SoftReference</span>&lt;&gt;(image);
+<span class="cls">Image</span> img = ref.get(); <span class="cm">// null якщо зібрано</span>
+
+<span class="cm">// WeakReference: збирається при наступному GC</span>
+<span class="cm">// Використовується в WeakHashMap</span>
+<span class="cls">WeakReference</span>&lt;<span class="cls">Object</span>&gt; weak = <span class="kw">new</span> <span class="cls">WeakReference</span>&lt;&gt;(obj);
+
+<span class="cm">// PhantomReference: збирається, але в ReferenceQueue</span>
+<span class="cm">// Для cleanup після збору (як finalizer, але краще)</span>
+<span class="cls">ReferenceQueue</span>&lt;<span class="cls">Object</span>&gt; queue = <span class="kw">new</span> <span class="cls">ReferenceQueue</span>&lt;&gt;();
+<span class="cls">PhantomReference</span>&lt;<span class="cls">Object</span>&gt; phantom =
+    <span class="kw">new</span> <span class="cls">PhantomReference</span>&lt;&gt;(obj, queue);</div>
+        <div class="callout callout-ok">
+          <strong>WeakHashMap</strong> — map де ключі є WeakReference. При відсутності strong посилань на ключ — entry автоматично видаляється. Типовий use case: cache де ключ — це сам об'єкт.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: flags and tools -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-gray">діагностика</span>
+        <h2>Корисні флаги і інструменти</h2>
+        <div class="code"><span class="cm">// Логування GC</span>
+-Xlog:gc*:file=gc.log:time,uptime,level,tags
+-XX:+PrintGCDetails    <span class="cm">// застарілий, але досі зустрічається</span>
+
+<span class="cm">// Heap dump при OOM</span>
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=/tmp/heapdump.hprof
+
+<span class="cm">// Показати всі JVM флаги</span>
+-XX:+PrintFlagsFinal
+
+<span class="cm">// Діагностичні команди (jcmd)</span>
+jcmd &lt;pid&gt; VM.flags              <span class="cm">// поточні флаги</span>
+jcmd &lt;pid&gt; GC.heap_info          <span class="cm">// стан heap</span>
+jcmd &lt;pid&gt; GC.run                <span class="cm">// викликати GC</span>
+jcmd &lt;pid&gt; Thread.print          <span class="cm">// всі потоки</span>
+jcmd &lt;pid&gt; VM.native_memory      <span class="cm">// native memory (NMT)</span>
+
+<span class="cm">// jstat — моніторинг GC в реальному часі</span>
+jstat -gcutil &lt;pid&gt; 1000         <span class="cm">// кожну секунду</span>
+<span class="cm">// S0 S1 E  O  M  CCS YGC YGCT FGC FGCT GCT</span>
+<span class="cm">// 0  87 42 65 94  90  15  0.3   2  0.5 0.8</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> heap = Young(Eden+S0+S1) + Old, metaspace = native (не heap), object header = 12-16 байт, Strong/Soft/Weak/Phantom references і коли GC збирає кожен. Boxing overhead: Integer = 4x більше ніж int.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>
