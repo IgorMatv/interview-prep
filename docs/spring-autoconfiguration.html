@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring Boot Autoconfiguration — Spring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--green);background:var(--green-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--green)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Spring Boot Autoconfiguration</h1>
+  <span class="header-tag">Spring Boot</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Механізм</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>@SpringBootApplication</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Як завантажуються autoconfig</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>@ConditionalOn* у autoconfig</div>
+    <div class="sidebar-section">Практика</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Override autoconfig</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>application.properties глибше</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Власна autoconfig</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Діагностика</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-green">механізм</span>
+        <h2>@SpringBootApplication</h2>
+        <p>Мета-анотація що об'єднує три ключові анотації.</p>
+        <div class="code"><span class="ann">@SpringBootApplication</span>
+<span class="cm">// = @SpringBootConfiguration</span>
+<span class="cm">//   + @EnableAutoConfiguration</span>
+<span class="cm">//   + @ComponentScan</span>
+
+<span class="cm">// @SpringBootConfiguration = @Configuration</span>
+<span class="cm">// Позначає клас як джерело @Bean definitions</span>
+
+<span class="cm">// @ComponentScan</span>
+<span class="cm">// Сканує поточний пакет і підпакети для @Component</span>
+
+<span class="cm">// @EnableAutoConfiguration — ключова магія</span>
+<span class="cm">// Завантажує всі autoconfig класи з classpath</span>
+
+<span class="cm">// Виключити конкретну autoconfig</span>
+<span class="ann">@SpringBootApplication</span>(exclude = {<span class="cls">DataSourceAutoConfiguration</span>.<span class="kw">class</span>})</div>
+        <div class="callout callout-info">
+          <code>@ComponentScan</code> без аргументів сканує пакет класу з <code>@SpringBootApplication</code>. Саме тому головний клас треба класти в кореневий пакет — щоб всі підпакети були відскановані.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: autoconfig loading -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-green">механізм</span>
+        <h2>Як завантажуються autoconfiguration</h2>
+        <div class="code"><span class="cm">// Spring Boot 2.x: META-INF/spring.factories</span>
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  com.example.MyAutoConfiguration,\
+  com.example.AnotherAutoConfiguration
+
+<span class="cm">// Spring Boot 3.x: META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</span>
+com.example.MyAutoConfiguration
+com.example.AnotherAutoConfiguration
+
+<span class="cm">// @AutoConfiguration в Spring Boot 3.x</span>
+<span class="ann">@AutoConfiguration</span>  <span class="cm">// = @Configuration + ordering support</span>
+<span class="ann">@ConditionalOnClass</span>(<span class="cls">RedisTemplate</span>.<span class="kw">class</span>)
+<span class="kw">class</span> <span class="cls">RedisAutoConfiguration</span> {
+    <span class="ann">@Bean</span>
+    <span class="ann">@ConditionalOnMissingBean</span>
+    <span class="kw">public</span> <span class="cls">RedisTemplate</span>&lt;?, ?&gt; redisTemplate(<span class="cls">RedisConnectionFactory</span> factory) {
+        <span class="kw">return new</span> <span class="cls">RedisTemplate</span>&lt;&gt;();
+    }
+}</div>
+        <div class="callout callout-info">
+          Spring Boot завантажує <strong>сотні</strong> autoconfig класів. Але більшість не реєструють beans завдяки @ConditionalOn* — якщо немає Redis на classpath, RedisAutoConfiguration нічого не створить.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: conditions -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">умови</span>
+        <h2>@ConditionalOn* у autoconfig — приклад</h2>
+        <p>Подивимось як реально влаштована DataSourceAutoConfiguration.</p>
+        <div class="code"><span class="ann">@AutoConfiguration</span>
+<span class="ann">@ConditionalOnClass</span>({ <span class="cls">DataSource</span>.<span class="kw">class</span>, <span class="cls">EmbeddedDatabaseType</span>.<span class="kw">class</span> })
+<span class="cm">// завантажується тільки якщо DataSource на classpath</span>
+<span class="ann">@EnableConfigurationProperties</span>(<span class="cls">DataSourceProperties</span>.<span class="kw">class</span>)
+<span class="cm">// зв'язує spring.datasource.* з DataSourceProperties</span>
+<span class="kw">class</span> <span class="cls">DataSourceAutoConfiguration</span> {
+
+    <span class="ann">@Bean</span>
+    <span class="ann">@ConditionalOnMissingBean</span>  <span class="cm">// тільки якщо не визначено своєї</span>
+    <span class="kw">public</span> <span class="cls">DataSource</span> dataSource(<span class="cls">DataSourceProperties</span> props) {
+        <span class="kw">return</span> props.initializeDataSourceBuilder().build();
+    }
+}
+
+<span class="cm">// Ланцюжок: spring-boot-starter-data-jpa тягне:</span>
+<span class="cm">// → hibernate-core → HibernateJpaAutoConfiguration</span>
+<span class="cm">// → HikariCP       → DataSourceAutoConfiguration</span>
+<span class="cm">// → spring-data-jpa → JpaRepositoriesAutoConfiguration</span></div>
+      </div>
+    </div>
+
+    <!-- 3: override -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-green">практика</span>
+        <h2>Override autoconfig</h2>
+        <p>Будь-яку autoconfig можна перевизначити — саме для цього <code>@ConditionalOnMissingBean</code>.</p>
+        <div class="code"><span class="cm">// Override DataSource — своя конфігурація пулу</span>
+<span class="ann">@Configuration</span>
+<span class="kw">class</span> <span class="cls">DatabaseConfig</span> {
+    <span class="ann">@Bean</span>  <span class="cm">// твій Bean → autoconfig не створить свій (MissingBean)</span>
+    <span class="kw">public</span> <span class="cls">DataSource</span> dataSource() {
+        <span class="kw">return</span> <span class="cls">DataSourceBuilder</span>.create()
+            .type(<span class="cls">HikariDataSource</span>.<span class="kw">class</span>)
+            .url(<span class="str">"jdbc:postgresql://..."</span>)
+            .maximumPoolSize(<span class="num">20</span>)
+            .build();
+    }
+}
+
+<span class="cm">// Override ObjectMapper (Jackson)</span>
+<span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">ObjectMapper</span> objectMapper() {
+    <span class="kw">return new</span> <span class="cls">ObjectMapper</span>()
+        .registerModule(<span class="kw">new</span> <span class="cls">JavaTimeModule</span>())
+        .disable(<span class="cls">SerializationFeature</span>.WRITE_DATES_AS_TIMESTAMPS);
+}
+
+<span class="cm">// Виключити autoconfig повністю</span>
+<span class="ann">@SpringBootApplication</span>(exclude = <span class="cls">SecurityAutoConfiguration</span>.<span class="kw">class</span>)</div>
+      </div>
+    </div>
+
+    <!-- 4: properties -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-blue">конфігурація</span>
+        <h2>application.properties глибше</h2>
+        <div class="code"><span class="cm">// @ConfigurationProperties — типізована конфігурація</span>
+<span class="ann">@ConfigurationProperties</span>(prefix = <span class="str">"app.route"</span>)
+<span class="ann">@Component</span>
+<span class="kw">class</span> <span class="cls">RouteProperties</span> {
+    <span class="kw">private int</span> maxStops = <span class="num">20</span>;
+    <span class="kw">private</span> <span class="cls">Duration</span> cacheTtl = <span class="cls">Duration</span>.ofHours(<span class="num">1</span>);
+    <span class="cm">// getters + setters (або @ConstructorBinding)</span>
+}
+
+<span class="cm">// application.properties:</span>
+app.route.max-stops=15
+app.route.cache-ttl=2h
+
+<span class="cm">// Пріоритет конфігурації (від вищого до нижчого):</span>
+<span class="cm">// 1. JVM -D props: -Dspring.datasource.url=...</span>
+<span class="cm">// 2. Environment variables: SPRING_DATASOURCE_URL</span>
+<span class="cm">// 3. application-{profile}.properties</span>
+<span class="cm">// 4. application.properties</span>
+<span class="cm">// 5. @PropertySource</span>
+<span class="cm">// 6. Default values</span></div>
+      </div>
+    </div>
+
+    <!-- 5: власна autoconfig -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-teal">просунуто</span>
+        <h2>Власна autoconfig (для бібліотек)</h2>
+        <div class="code"><span class="cm">// 1. Autoconfig клас</span>
+<span class="ann">@AutoConfiguration</span>
+<span class="ann">@ConditionalOnClass</span>(<span class="cls">RouteOptimizer</span>.<span class="kw">class</span>)
+<span class="ann">@EnableConfigurationProperties</span>(<span class="cls">RouteOptimizerProperties</span>.<span class="kw">class</span>)
+<span class="kw">class</span> <span class="cls">RouteOptimizerAutoConfiguration</span> {
+    <span class="ann">@Bean</span>
+    <span class="ann">@ConditionalOnMissingBean</span>
+    <span class="kw">public</span> <span class="cls">RouteOptimizer</span> routeOptimizer(<span class="cls">RouteOptimizerProperties</span> props) {
+        <span class="kw">return new</span> <span class="cls">RouteOptimizer</span>(props.getMaxStops());
+    }
+}
+
+<span class="cm">// 2. Зареєструвати:</span>
+<span class="cm">// resources/META-INF/spring/</span>
+<span class="cm">//   org.springframework.boot.autoconfigure.AutoConfiguration.imports</span>
+com.example.RouteOptimizerAutoConfiguration</div>
+        <div class="callout callout-ok">
+          Всі Spring Boot starters влаштовані саме так. Залежність + autoconfig + @ConditionalOnMissingBean = "convention over configuration" без жертви гнучкістю.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: діагностика -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-gray">діагностика</span>
+        <h2>Діагностика: що і чому завантажилось</h2>
+        <div class="code"><span class="cm">// Actuator: список всіх beans</span>
+<span class="cm">// GET /actuator/beans</span>
+
+<span class="cm">// Звіт autoconfiguration: що застосовано і чому</span>
+<span class="cm">// GET /actuator/conditions  (потрібен actuator)</span>
+
+<span class="cm">// Або при старті:</span>
+--debug   <span class="cm">// або</span>
+logging.level.org.springframework.boot.autoconfigure=DEBUG
+
+<span class="cm">// Виведе CONDITIONS EVALUATION REPORT:</span>
+<span class="cm">// Positive matches (застосовані):</span>
+<span class="cm">// RedisAutoConfiguration:</span>
+<span class="cm">//   - @ConditionalOnClass found required class 'RedisTemplate'</span>
+<span class="cm">// Negative matches (не застосовані):</span>
+<span class="cm">// MongoAutoConfiguration:</span>
+<span class="cm">//   - @ConditionalOnClass did not find required class 'MongoClient'</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> @SpringBootApplication = @Configuration + @ComponentScan + @EnableAutoConfiguration, autoconfig завантажується з imports файлу через SPI, @ConditionalOnMissingBean дозволяє override, пріоритет конфігурації (env vars > application.properties).
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

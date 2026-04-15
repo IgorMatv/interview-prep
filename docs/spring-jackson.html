@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jackson Deep: ObjectMapper, @JsonView — Spring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--green);background:var(--green-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--green)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Jackson Deep</h1>
+  <span class="header-tag">Spring / Jackson</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Основи</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>ObjectMapper і конфігурація</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Корисні анотації</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Дати і JavaTimeModule</div>
+    <div class="sidebar-section">Просунуто</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Custom serializer/deserializer</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>@JsonView</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Поліморфізм і @JsonTypeInfo</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Антипатерни</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-green">основи</span>
+        <h2>ObjectMapper і конфігурація</h2>
+        <p>ObjectMapper — центральний клас Jackson. Thread-safe після конфігурації. Один instance на застосунок.</p>
+        <div class="code"><span class="cm">// Spring Boot автоматично конфігурує ObjectMapper</span>
+<span class="cm">// Налаштування через application.properties:</span>
+spring.jackson.serialization.write-dates-as-timestamps=false
+spring.jackson.deserialization.fail-on-unknown-properties=false
+spring.jackson.default-property-inclusion=non_null
+
+<span class="cm">// Або через @Bean (override autoconfig)</span>
+<span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">ObjectMapper</span> objectMapper() {
+    <span class="kw">return new</span> <span class="cls">ObjectMapper</span>()
+        .registerModule(<span class="kw">new</span> <span class="cls">JavaTimeModule</span>())
+        .disable(<span class="cls">SerializationFeature</span>.WRITE_DATES_AS_TIMESTAMPS)
+        .disable(<span class="cls">DeserializationFeature</span>.FAIL_ON_UNKNOWN_PROPERTIES)
+        .setSerializationInclusion(<span class="cls">JsonInclude</span>.Include.NON_NULL)
+        .enable(<span class="cls">MapperFeature</span>.DEFAULT_VIEW_INCLUSION);
+}
+
+<span class="cm">// Часте використання напряму</span>
+<span class="cls">String</span> json  = mapper.writeValueAsString(obj);
+<span class="cls">MyDto</span> dto    = mapper.readValue(json, <span class="cls">MyDto</span>.<span class="kw">class</span>);
+<span class="cls">List</span>&lt;<span class="cls">MyDto</span>&gt; list = mapper.readValue(json,
+    <span class="kw">new</span> <span class="cls">TypeReference</span>&lt;<span class="cls">List</span>&lt;<span class="cls">MyDto</span>&gt;&gt;() {});</div>
+        <div class="callout callout-warn">
+          ObjectMapper потокобезпечний для <strong>читання/запису</strong>, але не для конфігурації. Конфігуруй один раз при створенні, потім тільки використовуй.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: annotations -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-teal">анотації</span>
+        <h2>Корисні Jackson анотації</h2>
+        <div class="code"><span class="cm">// Ім'я поля в JSON</span>
+<span class="ann">@JsonProperty</span>(<span class="str">"user_name"</span>)
+<span class="kw">private</span> <span class="cls">String</span> userName;
+
+<span class="cm">// Ігнорувати поле</span>
+<span class="ann">@JsonIgnore</span>
+<span class="kw">private</span> <span class="cls">String</span> password;
+
+<span class="cm">// Ігнорувати на рівні класу</span>
+<span class="ann">@JsonIgnoreProperties</span>({<span class="str">"internalId"</span>, <span class="str">"createdBy"</span>})
+<span class="kw">class</span> <span class="cls">UserDto</span> { ... }
+
+<span class="cm">// Ігнорувати невідомі поля (при десеріалізації)</span>
+<span class="ann">@JsonIgnoreProperties</span>(ignoreUnknown = <span class="kw">true</span>)
+
+<span class="cm">// Включати тільки не-null поля</span>
+<span class="ann">@JsonInclude</span>(<span class="cls">JsonInclude</span>.Include.NON_NULL)
+
+<span class="cm">// Аліас для десеріалізації</span>
+<span class="ann">@JsonAlias</span>({<span class="str">"userName"</span>, <span class="str">"user_name"</span>, <span class="str">"login"</span>})
+
+<span class="cm">// Creator для immutable класів (record-like)</span>
+<span class="ann">@JsonCreator</span>
+<span class="kw">public</span> <span class="cls">UserDto</span>(<span class="ann">@JsonProperty</span>(<span class="str">"id"</span>) <span class="kw">long</span> id,
+               <span class="ann">@JsonProperty</span>(<span class="str">"name"</span>) <span class="cls">String</span> name) { ... }
+
+<span class="cm">// Raw value (String що вже є JSON)</span>
+<span class="ann">@JsonRawValue</span>
+<span class="kw">private</span> <span class="cls">String</span> metadata; <span class="cm">// {"key":"val"} → вставляється як-є</span></div>
+      </div>
+    </div>
+
+    <!-- 2: dates -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-blue">дати</span>
+        <h2>Дати і JavaTimeModule</h2>
+        <p>Jackson за замовчуванням не вміє серіалізувати <code>LocalDate</code>, <code>LocalDateTime</code>, <code>ZonedDateTime</code>. Потрібен JavaTimeModule.</p>
+        <div class="code"><span class="cm">// Залежність</span>
+<span class="cm">// implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'</span>
+<span class="cm">// (входить в spring-boot-starter-web автоматично)</span>
+
+<span class="cm">// Реєстрація модуля</span>
+mapper.registerModule(<span class="kw">new</span> <span class="cls">JavaTimeModule</span>());
+mapper.disable(<span class="cls">SerializationFeature</span>.WRITE_DATES_AS_TIMESTAMPS);
+<span class="cm">// без disable → LocalDate серіалізується як [2024,1,15] (масив!)</span>
+
+<span class="cm">// Формат в application.properties (Spring Boot)</span>
+spring.jackson.serialization.write-dates-as-timestamps=false
+spring.jackson.date-format=yyyy-MM-dd'T'HH:mm:ss
+
+<span class="cm">// Кастомний формат для конкретного поля</span>
+<span class="ann">@JsonFormat</span>(shape = <span class="cls">JsonFormat</span>.Shape.STRING, pattern = <span class="str">"dd.MM.yyyy"</span>)
+<span class="kw">private</span> <span class="cls">LocalDate</span> birthDate;
+
+<span class="cm">// record — Jackson 2.12+ підтримує нативно</span>
+<span class="kw">record</span> <span class="cls">UserDto</span>(<span class="kw">long</span> id, <span class="cls">String</span> name, <span class="cls">LocalDate</span> birthDate) {}</div>
+      </div>
+    </div>
+
+    <!-- 3: custom serializer -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-teal">custom</span>
+        <h2>Custom serializer/deserializer</h2>
+        <div class="code"><span class="cm">// Custom serializer</span>
+<span class="kw">class</span> <span class="cls">MoneySerializer</span> <span class="kw">extends</span> <span class="cls">StdSerializer</span>&lt;<span class="cls">Money</span>&gt; {
+    <span class="cls">MoneySerializer</span>() { <span class="kw">super</span>(<span class="cls">Money</span>.<span class="kw">class</span>); }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> serialize(<span class="cls">Money</span> m, <span class="cls">JsonGenerator</span> gen,
+                          <span class="cls">SerializerProvider</span> p) <span class="kw">throws</span> <span class="cls">IOException</span> {
+        gen.writeStartObject();
+        gen.writeNumberField(<span class="str">"amount"</span>, m.getAmount());
+        gen.writeStringField(<span class="str">"currency"</span>, m.getCurrency().getCode());
+        gen.writeEndObject();
+    }
+}
+
+<span class="cm">// Custom deserializer</span>
+<span class="kw">class</span> <span class="cls">MoneyDeserializer</span> <span class="kw">extends</span> <span class="cls">StdDeserializer</span>&lt;<span class="cls">Money</span>&gt; {
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> <span class="cls">Money</span> deserialize(<span class="cls">JsonParser</span> p, <span class="cls">DeserializationContext</span> ctx)
+            <span class="kw">throws</span> <span class="cls">IOException</span> {
+        <span class="cls">ObjectNode</span> node = p.getCodec().readTree(p);
+        <span class="kw">return new</span> <span class="cls">Money</span>(node.get(<span class="str">"amount"</span>).decimalValue(),
+                        node.get(<span class="str">"currency"</span>).asText());
+    }
+}
+
+<span class="cm">// Реєстрація</span>
+<span class="cls">SimpleModule</span> module = <span class="kw">new</span> <span class="cls">SimpleModule</span>();
+module.addSerializer(<span class="cls">Money</span>.<span class="kw">class</span>, <span class="kw">new</span> <span class="cls">MoneySerializer</span>());
+module.addDeserializer(<span class="cls">Money</span>.<span class="kw">class</span>, <span class="kw">new</span> <span class="cls">MoneyDeserializer</span>());
+mapper.registerModule(module);
+
+<span class="cm">// Або на полі:</span>
+<span class="ann">@JsonSerialize</span>(using = <span class="cls">MoneySerializer</span>.<span class="kw">class</span>)
+<span class="ann">@JsonDeserialize</span>(using = <span class="cls">MoneyDeserializer</span>.<span class="kw">class</span>)
+<span class="kw">private</span> <span class="cls">Money</span> price;</div>
+      </div>
+    </div>
+
+    <!-- 4: JsonView -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-blue">@JsonView</span>
+        <h2>@JsonView — різні представлення одного класу</h2>
+        <p>Дозволяє включати різні поля залежно від контексту. Замість окремих DTO для кожного endpoint.</p>
+        <div class="code"><span class="cm">// 1. Визначаємо Views (маркерні інтерфейси)</span>
+<span class="kw">class</span> <span class="cls">Views</span> {
+    <span class="kw">interface</span> <span class="cls">Public</span> {}
+    <span class="kw">interface</span> <span class="cls">Internal</span> <span class="kw">extends</span> <span class="cls">Public</span> {}  <span class="cm">// успадковує Public поля</span>
+}
+
+<span class="cm">// 2. Позначаємо поля</span>
+<span class="kw">class</span> <span class="cls">UserDto</span> {
+    <span class="ann">@JsonView</span>(<span class="cls">Views.Public</span>.<span class="kw">class</span>)
+    <span class="kw">public long</span> id;
+
+    <span class="ann">@JsonView</span>(<span class="cls">Views.Public</span>.<span class="kw">class</span>)
+    <span class="kw">public</span> <span class="cls">String</span> name;
+
+    <span class="ann">@JsonView</span>(<span class="cls">Views.Internal</span>.<span class="kw">class</span>)
+    <span class="kw">public</span> <span class="cls">String</span> email;      <span class="cm">// тільки для Internal view</span>
+
+    <span class="kw">public</span> <span class="cls">String</span> password;   <span class="cm">// взагалі не серіалізується</span>
+}
+
+<span class="cm">// 3. У контролері</span>
+<span class="ann">@GetMapping</span>(<span class="str">"/public/user/{id}"</span>)
+<span class="ann">@JsonView</span>(<span class="cls">Views.Public</span>.<span class="kw">class</span>)
+<span class="kw">public</span> <span class="cls">UserDto</span> getPublic(<span class="ann">@PathVariable</span> <span class="kw">long</span> id) { ... }
+<span class="cm">// → {"id":1, "name":"Alice"}</span>
+
+<span class="ann">@GetMapping</span>(<span class="str">"/internal/user/{id}"</span>)
+<span class="ann">@JsonView</span>(<span class="cls">Views.Internal</span>.<span class="kw">class</span>)
+<span class="kw">public</span> <span class="cls">UserDto</span> getInternal(<span class="ann">@PathVariable</span> <span class="kw">long</span> id) { ... }
+<span class="cm">// → {"id":1, "name":"Alice", "email":"alice@example.com"}</span></div>
+      </div>
+    </div>
+
+    <!-- 5: polymorphism -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-teal">поліморфізм</span>
+        <h2>Поліморфізм і @JsonTypeInfo</h2>
+        <p>Коли поле може бути одним з кількох підтипів — Jackson потрібна підказка про тип для десеріалізації.</p>
+        <div class="code"><span class="cm">// Base class</span>
+<span class="ann">@JsonTypeInfo</span>(use = <span class="cls">JsonTypeInfo</span>.Id.NAME, property = <span class="str">"type"</span>)
+<span class="ann">@JsonSubTypes</span>({
+    <span class="ann">@JsonSubTypes.Type</span>(value = <span class="cls">EmailNotification</span>.<span class="kw">class</span>, name = <span class="str">"email"</span>),
+    <span class="ann">@JsonSubTypes.Type</span>(value = <span class="cls">SmsNotification</span>.<span class="kw">class</span>,   name = <span class="str">"sms"</span>)
+})
+<span class="kw">abstract class</span> <span class="cls">Notification</span> { ... }
+
+<span class="cm">// JSON:</span>
+<span class="cm">// {"type":"email", "to":"alice@example.com", "subject":"..."}</span>
+<span class="cm">// → десеріалізується в EmailNotification</span>
+
+<span class="cm">// Альтернатива: @JsonTypeInfo(use = CLASS)</span>
+<span class="cm">// {"@class":"com.example.EmailNotification", ...}</span>
+<span class="cm">// Небезпечно для зовнішніх API (deserialization gadgets)</span></div>
+        <div class="callout callout-warn">
+          <code>@JsonTypeInfo(use = CLASS)</code> — небезпечно в публічних API. Зловмисник може передати будь-який клас з classpath. Використовуй <code>use = NAME</code> з явним whitelist через <code>@JsonSubTypes</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: антипатерни -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-red">антипатерни</span>
+        <h2>Типові помилки</h2>
+        <h3>1. Новий ObjectMapper на кожен виклик</h3>
+        <div class="code"><span class="cm">// ПОГАНО: ObjectMapper дорогий у створенні</span>
+<span class="kw">void</span> process(<span class="cls">String</span> json) <span class="kw">throws</span> <span class="cls">Exception</span> {
+    <span class="kw">new</span> <span class="cls">ObjectMapper</span>().readValue(json, <span class="cls">Dto</span>.<span class="kw">class</span>); <span class="cm">// кожен раз!</span>
+}
+
+<span class="cm">// ДОБРЕ: singleton через @Autowired</span>
+<span class="ann">@Autowired</span> <span class="cls">ObjectMapper</span> mapper;</div>
+        <hr class="sep">
+        <h3>2. FAIL_ON_UNKNOWN_PROPERTIES = true (default)</h3>
+        <div class="code"><span class="cm">// Якщо API повернув нове поле → UnrecognizedPropertyException</span>
+<span class="cm">// Завжди вимикай для клієнтів зовнішніх API</span>
+mapper.disable(<span class="cls">DeserializationFeature</span>.FAIL_ON_UNKNOWN_PROPERTIES);
+<span class="cm">// або</span>
+<span class="ann">@JsonIgnoreProperties</span>(ignoreUnknown = <span class="kw">true</span>)</div>
+        <hr class="sep">
+        <h3>3. TypeReference без {} — загублений type parameter</h3>
+        <div class="code"><span class="cm">// ПОГАНО: type erasure, втрачається List&lt;Dto&gt;</span>
+mapper.readValue(json, <span class="kw">new</span> <span class="cls">TypeReference</span>&lt;<span class="cls">List</span>&lt;<span class="cls">Dto</span>&gt;&gt;(<span class="num">0</span>)); <span class="cm">// не анонімний клас!</span>
+
+<span class="cm">// ДОБРЕ: анонімний підклас зберігає generic type</span>
+mapper.readValue(json, <span class="kw">new</span> <span class="cls">TypeReference</span>&lt;<span class="cls">List</span>&lt;<span class="cls">Dto</span>&gt;&gt;() {});</div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> ObjectMapper thread-safe і singleton, WRITE_DATES_AS_TIMESTAMPS=false для ISO dates, @JsonView для різних представлень, TypeReference для generic types, @JsonTypeInfo з NAME (не CLASS) для безпеки.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>
