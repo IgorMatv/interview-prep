@@ -394,40 +394,40 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
     </div>
     <div class="grid">
 
-      <div class="card wip" style="--accent:var(--blue)">
+      <a href="sql-indexes.html" class="card" style="--accent:var(--blue)">
         <div class="card-tag t-blue">SQL</div>
         <h3>B-tree index, composite index, left-prefix rule</h3>
-        <p>як індекси працюють, EXPLAIN ANALYZE, покриваючі індекси.</p>
+        <p>як індекси працюють, EXPLAIN ANALYZE, covering indexes.</p>
         <div class="card-chips"><span class="chip">B-tree</span><span class="chip">composite</span><span class="chip">EXPLAIN</span></div>
-      </div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--blue)">
+      <a href="sql-window-mvcc.html" class="card" style="--accent:var(--blue)">
         <div class="card-tag t-blue">SQL</div>
         <h3>Window functions, CTE, MVCC</h3>
-        <p>ROW_NUMBER, RANK, WITH, multi-version concurrency control.</p>
+        <p>ROW_NUMBER, RANK, LAG/LEAD, recursive CTE, VACUUM.</p>
         <div class="card-chips"><span class="chip">ROW_NUMBER</span><span class="chip">CTE</span><span class="chip">MVCC</span></div>
-      </div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--blue)">
+      <a href="sql-isolation.html" class="card" style="--accent:var(--blue)">
         <div class="card-tag t-blue">SQL</div>
         <h3>Isolation levels, deadlock, SELECT FOR UPDATE</h3>
-        <p>4 рівні ізоляції, phantom read, pessimistic locking.</p>
+        <p>4 рівні ізоляції, phantom read, pessimistic locking, SKIP LOCKED.</p>
         <div class="card-chips"><span class="chip">READ COMMITTED</span><span class="chip">SERIALIZABLE</span><span class="chip">phantom</span></div>
-      </div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--blue)">
+      <a href="hikaricp.html" class="card" style="--accent:var(--blue)">
         <div class="card-tag t-blue">SQL</div>
         <h3>HikariCP tuning, connection pool sizing</h3>
-        <p>параметри пулу, формула розміру, моніторинг.</p>
+        <p>параметри пулу, формула розміру, connection leak, моніторинг.</p>
         <div class="card-chips"><span class="chip">HikariCP</span><span class="chip">pool size</span><span class="chip">timeout</span></div>
-      </div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--teal)">
+      <a href="kafka.html" class="card" style="--accent:var(--teal)">
         <div class="card-tag t-teal">Kafka</div>
         <h3>Kafka: partitions, consumer groups, exactly-once</h3>
-        <p>offset, rebalancing, delivery guarantees, idempotent producer.</p>
+        <p>offset, rebalancing, delivery guarantees, idempotent producer, DLQ.</p>
         <div class="card-chips"><span class="chip">partition</span><span class="chip">offset</span><span class="chip">exactly-once</span></div>
-      </div>
+      </a>
 
     </div>
   </div>

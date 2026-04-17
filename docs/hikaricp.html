@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HikariCP: connection pool, tuning — Spring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--blue);background:var(--blue-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--blue)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>HikariCP: connection pool, tuning</h1>
+  <span class="header-tag">Spring / DB</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">HikariCP</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Навіщо connection pool</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Ключові параметри</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Розмір пулу — формула</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Timeout параметри</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Моніторинг і метрики</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Connection leak</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Антипатерни і налаштування</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-blue">навіщо</span>
+        <h2>Навіщо connection pool</h2>
+        <p>Встановлення DB з'єднання — дорога операція: TCP handshake, аутентифікація, SSL negotiation (~50-100ms). Connection pool тримає готові з'єднання і повторно використовує їх.</p>
+        <div class="code"><span class="cm">// Без пулу: нове з'єднання на кожен запит</span>
+<span class="cm">// 100 RPS → 100 нових з'єднань/сек → overhead</span>
+
+<span class="cm">// З пулом: беремо готове з'єднання (~0.5ms)</span>
+<span class="cm">// після запиту повертаємо в пул</span>
+
+<span class="cm">// HikariCP — default в Spring Boot 2+</span>
+<span class="cm">// Найшвидший пул: ~28 мікросекунд на отримання з'єднання</span>
+<span class="cm">// Проти DBCP2/c3p0/Tomcat pool</span></div>
+        <div class="callout callout-info">
+          HikariCP — default в Spring Boot 2+, не потрібна додаткова залежність. Налаштовується через <code>spring.datasource.hikari.*</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: параметри -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-blue">конфігурація</span>
+        <h2>Ключові параметри</h2>
+        <div class="code">spring.datasource.hikari.maximum-pool-size=10
+<span class="cm"># максимальна кількість з'єднань (default 10)</span>
+
+spring.datasource.hikari.minimum-idle=5
+<span class="cm"># мінімальна кількість idle з'єднань</span>
+<span class="cm"># рекомендація HikariCP: = maximum-pool-size (fixed pool)</span>
+
+spring.datasource.hikari.connection-timeout=30000
+<span class="cm"># скільки ms чекати на з'єднання з пулу (default 30s)</span>
+<span class="cm"># при перевищенні: SQLTransientConnectionException</span>
+
+spring.datasource.hikari.idle-timeout=600000
+<span class="cm"># скільки ms idle з'єднання живе перед закриттям (10 min)</span>
+
+spring.datasource.hikari.max-lifetime=1800000
+<span class="cm"># максимальний час життя з'єднання (30 min)</span>
+<span class="cm"># має бути < DB server timeout (PostgreSQL: idle_in_transaction_session_timeout)</span>
+
+spring.datasource.hikari.keepalive-time=120000
+<span class="cm"># ping idle з'єднання щоб не закрив firewall (2 min)</span>
+
+spring.datasource.hikari.pool-name=HikariPool-main</div>
+      </div>
+    </div>
+
+    <!-- 2: розмір пулу -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-amber">розмір пулу</span>
+        <h2>Розмір пулу — формула HikariCP</h2>
+        <p>HikariCP рекомендує: <strong>pool size = Tn × (Cm - 1) + 1</strong>, де Tn — максимальна кількість потоків, Cm — максимальна кількість одночасних з'єднань на потік.</p>
+        <div class="code"><span class="cm">// Проста формула від HikariCP wiki:</span>
+<span class="cm">// pool_size = cpu_cores * 2 + disk_spindles</span>
+<span class="cm">// Для SSD без spindles: cpu_cores * 2 + 1</span>
+
+<span class="cm">// Приклад: 4 CPU, SSD</span>
+<span class="cm">// pool_size = 4 * 2 + 1 = 9 ≈ 10</span>
+
+<span class="cm">// Але "правило 10" від HikariCP:</span>
+<span class="cm">// Більшість застосунків не потребують > 10 з'єднань</span>
+<span class="cm">// 10 з'єднань × 10 мс на запит = 1000 QPS</span></div>
+        <div class="callout callout-warn">
+          <strong>Більше з'єднань ≠ швидше.</strong> PostgreSQL має overhead на кожне з'єднання (~5MB RAM). 100 з'єднань на 4-ядерному сервері → context switching overhead перевищує користь. Оптимум зазвичай 10-20.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Pool size і thread pool</h3>
+        <div class="code"><span class="cm">// ВАЖЛИВО: pool_size ≥ thread_pool_size</span>
+<span class="cm">// Якщо 200 threads і 10 з'єднань → 190 threads чекають</span>
+<span class="cm">// → connection-timeout exceptions під навантаженням</span>
+
+<span class="cm">// Але і навпаки: thread_pool_size > pool_size</span>
+<span class="cm">// → природній backpressure (threads чекають на з'єднання)</span>
+
+<span class="cm">// Spring Boot: tomcat.threads.max (default 200)</span>
+<span class="cm">// HikariCP: maximum-pool-size (default 10)</span>
+<span class="cm">// → потенційна проблема під навантаженням</span>
+
+<span class="cm">// Рішення: або збільшити pool-size</span>
+<span class="cm">// або зменшити tomcat threads</span>
+server.tomcat.threads.max=50
+spring.datasource.hikari.maximum-pool-size=50</div>
+      </div>
+    </div>
+
+    <!-- 3: timeouts -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-teal">timeouts</span>
+        <h2>Timeout параметри</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Параметр</th><th>Що контролює</th><th>Default</th></tr></thead>
+            <tbody>
+              <tr><td><code>connectionTimeout</code></td><td>чекати на з'єднання з пулу</td><td>30000ms</td></tr>
+              <tr><td><code>validationTimeout</code></td><td>timeout для validation query</td><td>5000ms</td></tr>
+              <tr><td><code>idleTimeout</code></td><td>idle з'єднання видаляється</td><td>600000ms</td></tr>
+              <tr><td><code>maxLifetime</code></td><td>максимальний вік з'єднання</td><td>1800000ms</td></tr>
+              <tr><td><code>keepaliveTime</code></td><td>ping idle з'єднання</td><td>0 (вимкнено)</td></tr>
+              <tr><td><code>initializationFailTimeout</code></td><td>startup timeout</td><td>1ms</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code" style="margin-top:.75rem"><span class="cm">// Типова prod конфігурація</span>
+spring.datasource.hikari.maximum-pool-size=20
+spring.datasource.hikari.minimum-idle=20      <span class="cm"># fixed pool</span>
+spring.datasource.hikari.connection-timeout=3000   <span class="cm"># fail fast: 3s</span>
+spring.datasource.hikari.max-lifetime=600000       <span class="cm"># 10 хв</span>
+spring.datasource.hikari.keepalive-time=60000      <span class="cm"># 1 хв ping</span>
+
+<span class="cm">// PostgreSQL statement timeout (на стороні DB)</span>
+spring.datasource.hikari.connection-init-sql=SET statement_timeout=30000</div>
+      </div>
+    </div>
+
+    <!-- 4: моніторинг -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-teal">моніторинг</span>
+        <h2>Моніторинг і метрики</h2>
+        <div class="code"><span class="cm">// Spring Actuator + Micrometer: автоматично</span>
+management.endpoints.web.exposure.include=metrics,health
+management.metrics.tags.application=my-app
+
+<span class="cm">// GET /actuator/metrics/hikaricp.connections</span>
+<span class="cm">// Ключові метрики:</span>
+<span class="cm">// hikaricp.connections.active   — зараз використовуються</span>
+<span class="cm">// hikaricp.connections.idle     — вільні</span>
+<span class="cm">// hikaricp.connections.pending  — очікують (!)  → pool замалий</span>
+<span class="cm">// hikaricp.connections.timeout  — не дочекались → critical</span>
+<span class="cm">// hikaricp.connections.acquire  — час отримання з'єднання</span>
+
+<span class="cm">// Grafana дашборд: HikariCP dashboard id=6083</span>
+
+<span class="cm">// Логування статистики (dev)</span>
+logging.level.com.zaxxer.hikari.HikariConfig=DEBUG
+logging.level.com.zaxxer.hikari=TRACE</div>
+        <div class="callout callout-warn">
+          <code>pending > 0</code> постійно — пул замалий або є connection leak. <code>timeout > 0</code> — критично, запити відкидаються. Обидва потребують негайної уваги.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: leak -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-red">connection leak</span>
+        <h2>Connection leak</h2>
+        <p>З'єднання взяте з пулу але не повернуте. Пул поступово вичерпується → нові запити чекають → timeout.</p>
+        <div class="code"><span class="cm">// Причини:</span>
+<span class="cm">// 1. Connection не закрито при exception</span>
+<span class="cm">// 2. Транзакція відкрита без commit/rollback</span>
+<span class="cm">// 3. Код в @Async без @Transactional правильно закриває</span>
+
+<span class="cm">// Виявлення: leak detection</span>
+spring.datasource.hikari.leak-detection-threshold=5000
+<span class="cm">// Якщо з'єднання не повернуте за 5 секунд → WARNING зі стек-трейсом</span>
+
+<span class="cm">// Приклад виводу:</span>
+<span class="cm">// WARNING: Connection leak detection triggered for connection</span>
+<span class="cm">// com.zaxxer.hikari.pool.ProxyConnection@7a2c...</span>
+<span class="cm">// Stack trace of connection borrower:</span>
+<span class="cm">// at com.example.service.OrderService.processOrder(...)  ← тут проблема</span></div>
+        <div class="callout callout-ok">
+          <code>leak-detection-threshold</code> — перший крок при підозрі на connection leak. Встанови 2-3x більше типового часу запиту. Це не вирішує, але вказує де проблема.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: антипатерни -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-red">антипатерни</span>
+        <h2>Антипатерни і правильне налаштування</h2>
+        <h3>1. Занадто великий пул</h3>
+        <div class="code"><span class="cm">// ПОГАНО: 200 з'єднань на 4-ядерний PG сервер</span>
+maximum-pool-size=200
+<span class="cm">// → PG витрачає ~1GB RAM на з'єднання</span>
+<span class="cm">// → context switching overhead</span>
+<span class="cm">// → db-side connection limit exceeded</span></div>
+        <hr class="sep">
+        <h3>2. connection-timeout занадто великий</h3>
+        <div class="code"><span class="cm">// ПОГАНО: 30 секунд чекати на з'єднання</span>
+connection-timeout=30000
+<span class="cm">// → user чекає 30 секунд перед помилкою</span>
+<span class="cm">// ДОБРЕ: fail fast</span>
+connection-timeout=3000  <span class="cm">// 3 секунди → 503 для user</span></div>
+        <hr class="sep">
+        <h3>3. max-lifetime > DB server timeout</h3>
+        <div class="code"><span class="cm">// PostgreSQL idle connection timeout (pg.conf)</span>
+<span class="cm">// idle_in_transaction_session_timeout = 10min</span>
+<span class="cm">// max-lifetime має бути &lt; 10min</span>
+max-lifetime=540000  <span class="cm">// 9 хвилин — менше ніж DB timeout</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> pool тримає готові з'єднання щоб уникнути overhead встановлення, HikariCP рекомендує fixed pool (minimum-idle = maximum-pool-size), правило ~10 з'єднань на CPU core, connection-timeout = fail fast, leak-detection для діагностики.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

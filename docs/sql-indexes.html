@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL: B-tree індекси, EXPLAIN ANALYZE — PostgreSQL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--blue);background:var(--blue-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--blue)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>SQL: B-tree індекси, EXPLAIN ANALYZE</h1>
+  <span class="header-tag">PostgreSQL</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Індекси</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Як B-tree індекс працює</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Composite index і left-prefix</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Covering index</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Інші типи індексів</div>
+    <div class="sidebar-section">Аналіз</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>EXPLAIN ANALYZE</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Коли індекс не використовується</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Індекси і write overhead</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-blue">структура</span>
+        <h2>Як B-tree індекс працює</h2>
+        <p>B-tree (Balanced Tree) — збалансоване дерево. Листові ноди містять значення ключа і вказівник на heap (фізичне розташування рядку). Пошук за O(log n).</p>
+        <div class="code"><span class="cm">-- Звичайний пошук без індексу: Sequential Scan</span>
+<span class="cm">-- Читає кожен рядок таблиці: O(n)</span>
+SELECT * FROM orders WHERE user_id = 42;
+<span class="cm">-- При 1M рядків → 1M читань</span>
+
+<span class="cm">-- З індексом: Index Scan → O(log n)</span>
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+<span class="cm">-- B-tree: пройти дерево → знайти листову ноду → heap lookup</span>
+<span class="cm">-- При 1M рядків → ~20 читань</span>
+
+<span class="cm">-- Переваги B-tree:</span>
+<span class="cm">-- = equality: WHERE id = 5</span>
+<span class="cm">-- Range: WHERE created_at BETWEEN '2024-01-01' AND '2024-12-31'</span>
+<span class="cm">-- ORDER BY: може уникнути Sort вузла</span>
+<span class="cm">-- IS NULL / IS NOT NULL</span></div>
+        <div class="callout callout-info">
+          B-tree підтримує: <code>=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>BETWEEN</code>, <code>IN</code>, <code>LIKE 'prefix%'</code>. Не підтримує: <code>LIKE '%suffix'</code>, <code>LIKE '%middle%'</code> — для цього Full-text search або GIN.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: composite -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-blue">composite</span>
+        <h2>Composite index і left-prefix rule</h2>
+        <p>Composite index по (A, B, C) — відсортований спочатку за A, потім B, потім C. <strong>Left-prefix rule:</strong> індекс використовується тільки якщо є фільтр по крайньому лівому стовпцю.</p>
+        <div class="code">CREATE INDEX idx_orders_user_status_date
+    ON orders(user_id, status, created_at);
+
+<span class="cm">-- ✓ Використовує індекс (є user_id — лівий крайній)</span>
+WHERE user_id = 42
+WHERE user_id = 42 AND status = 'PAID'
+WHERE user_id = 42 AND status = 'PAID' AND created_at > '2024-01-01'
+WHERE user_id = 42 AND created_at > '2024-01-01'  <span class="cm">-- частково (пропускає status)</span>
+
+<span class="cm">-- ✗ НЕ використовує індекс</span>
+WHERE status = 'PAID'                <span class="cm">-- нема user_id</span>
+WHERE created_at > '2024-01-01'      <span class="cm">-- нема user_id</span>
+WHERE status = 'PAID' AND created_at > '2024-01-01'  <span class="cm">-- теж ні</span></div>
+        <div class="callout callout-warn">
+          <strong>Порядок колонок у composite index важливий.</strong> Правило: спочатку колонки з <code>=</code> фільтрами, потім з range (<code>&lt;</code>, <code>&gt;</code>, <code>BETWEEN</code>). Range колонка має бути останньою — після неї індекс вже не допомагає.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Порядок стовпців — практика</h3>
+        <div class="code"><span class="cm">-- Запит: WHERE user_id = ? AND status = ? AND created_at > ?</span>
+<span class="cm">-- Оптимальний порядок:</span>
+CREATE INDEX ON orders(user_id, status, created_at);
+<span class="cm">-- user_id і status — equality (=), created_at — range (>)</span>
+<span class="cm">-- Range колонка останньою!</span>
+
+<span class="cm">-- Якщо порядок неправильний:</span>
+CREATE INDEX ON orders(created_at, user_id, status);
+<span class="cm">-- Запит WHERE user_id=42 AND status='PAID' AND created_at>... </span>
+<span class="cm">-- Не зможе ефективно використати цей індекс</span></div>
+      </div>
+    </div>
+
+    <!-- 2: covering -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-green">covering</span>
+        <h2>Covering index (покриваючий)</h2>
+        <p>Якщо всі колонки запиту є в індексі — PostgreSQL не йде в heap таблиці (Index Only Scan). Найшвидший варіант.</p>
+        <div class="code"><span class="cm">-- Запит: SELECT status, total FROM orders WHERE user_id = 42</span>
+
+<span class="cm">-- Звичайний індекс: Index Scan → heap lookup для status, total</span>
+CREATE INDEX ON orders(user_id);
+
+<span class="cm">-- Covering index: Index Only Scan — heap не потрібен!</span>
+CREATE INDEX ON orders(user_id) INCLUDE (status, total);
+<span class="cm">-- або включити в ключ (але впливає на сортування)</span>
+CREATE INDEX ON orders(user_id, status, total);
+
+<span class="cm">-- INCLUDE (PostgreSQL 11+): додає колонки в листову ноду</span>
+<span class="cm">-- без включення в ключ сортування</span>
+CREATE INDEX ON orders(user_id, status) INCLUDE (total, created_at);</div>
+        <div class="callout callout-ok">
+          Covering index особливо цінний для часто виконуваних запитів. Перевір у EXPLAIN: <code>Index Only Scan</code> замість <code>Index Scan</code> — значить heap не читається.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: інші типи -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-blue">типи індексів</span>
+        <h2>Інші типи індексів</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Тип</th><th>Коли</th><th>PostgreSQL</th></tr></thead>
+            <tbody>
+              <tr><td><code>B-tree</code></td><td>equality, range, ORDER BY</td><td class="td-good">default</td></tr>
+              <tr><td><code>Hash</code></td><td>тільки equality (=)</td><td>рідко кращий за B-tree</td></tr>
+              <tr><td><code>GIN</code></td><td>jsonb, arrays, full-text search</td><td>jsonb operators @>, ?</td></tr>
+              <tr><td><code>GiST</code></td><td>геометрія, full-text, range types</td><td>PostGIS, tsvector</td></tr>
+              <tr><td><code>BRIN</code></td><td>великі таблиці з sequential insert</td><td>timestamps, serial ids</td></tr>
+              <tr><td><code>Partial</code></td><td>підмножина рядків</td><td>WHERE status='ACTIVE'</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code" style="margin-top:.75rem"><span class="cm">-- GIN для jsonb</span>
+CREATE INDEX ON pois USING GIN (attributes);
+SELECT * FROM pois WHERE attributes @> '{"category": "museum"}';
+
+<span class="cm">-- Partial index: тільки активні записи</span>
+CREATE INDEX ON orders(user_id)
+    WHERE status != 'DELETED';
+<span class="cm">-- Менший розмір, швидший для активних записів</span>
+
+<span class="cm">-- BRIN: для часових рядів</span>
+CREATE INDEX ON events USING BRIN (created_at);
+<span class="cm">-- Дуже малий розмір, ефективний при sequential insert</span></div>
+      </div>
+    </div>
+
+    <!-- 4: EXPLAIN -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-amber">EXPLAIN</span>
+        <h2>EXPLAIN ANALYZE</h2>
+        <div class="code"><span class="cm">-- EXPLAIN: план без виконання</span>
+EXPLAIN SELECT * FROM orders WHERE user_id = 42;
+
+<span class="cm">-- EXPLAIN ANALYZE: виконує і показує реальні цифри</span>
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT * FROM orders WHERE user_id = 42;
+
+<span class="cm">-- Приклад виводу:</span>
+<span class="cm">-- Index Scan using idx_orders_user_id on orders</span>
+<span class="cm">--   (cost=0.43..8.45 rows=5 width=200)</span>
+<span class="cm">--   (actual time=0.031..0.045 rows=5 loops=1)</span>
+<span class="cm">--   Index Cond: (user_id = 42)</span>
+<span class="cm">-- Buffers: shared hit=4</span>
+<span class="cm">-- Planning Time: 0.5 ms</span>
+<span class="cm">-- Execution Time: 0.1 ms</span></div>
+        <div class="callout callout-info">
+          <strong>Ключові вузли EXPLAIN:</strong> <code>Seq Scan</code> — sequential scan (може бути OK для малих таблиць), <code>Index Scan</code> — використовує індекс, <code>Index Only Scan</code> — covering index, <code>Bitmap Heap Scan</code> — для IN з багатьма значеннями, <code>Nested Loop / Hash Join / Merge Join</code> — join стратегії.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Читання cost</h3>
+        <div class="code"><span class="cm">-- cost=0.43..8.45 rows=5 width=200</span>
+<span class="cm">-- cost: startup_cost..total_cost</span>
+<span class="cm">-- startup_cost: час до першого рядку</span>
+<span class="cm">-- total_cost: оціночна вартість всього</span>
+<span class="cm">-- rows: оціночна кількість рядків</span>
+<span class="cm">-- width: середній розмір рядку в байтах</span>
+
+<span class="cm">-- Порівняй estimated rows vs actual rows</span>
+<span class="cm">-- Якщо сильно відрізняються → застаріла статистика</span>
+<span class="cm">-- Рішення: ANALYZE table_name</span></div>
+      </div>
+    </div>
+
+    <!-- 5: коли не використовується -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-red">антипатерни</span>
+        <h2>Коли індекс не використовується</h2>
+        <div class="code"><span class="cm">-- 1. Функція над колонкою</span>
+WHERE LOWER(email) = 'alice@ex.com'  <span class="cm">-- індекс на email не допомагає</span>
+<span class="cm">-- Рішення: functional index</span>
+CREATE INDEX ON users (LOWER(email));
+WHERE LOWER(email) = 'alice@ex.com'  <span class="cm">-- тепер використовує</span>
+
+<span class="cm">-- 2. Implicit type cast</span>
+WHERE user_id = '42'   <span class="cm">-- user_id INT, '42' TEXT → cast → no index</span>
+WHERE user_id = 42     <span class="cm">-- правильно</span>
+
+<span class="cm">-- 3. OR між різними колонками</span>
+WHERE user_id = 42 OR status = 'PAID'
+<span class="cm">-- Рішення: UNION або окремі індекси + Bitmap OR</span>
+
+<span class="cm">-- 4. Negation</span>
+WHERE status != 'DELETED'   <span class="cm">-- зазвичай Seq Scan (крім partial index)</span>
+WHERE status NOT IN (...)
+
+<span class="cm">-- 5. Low selectivity (мало унікальних значень)</span>
+WHERE is_active = true  <span class="cm">-- якщо 90% рядків active → Seq Scan вигідніший</span>
+<span class="cm">-- PostgreSQL сам вирішує: якщо &lt;~5% рядків → Index Scan</span>
+
+<span class="cm">-- 6. LIKE з leading wildcard</span>
+WHERE name LIKE '%Alice%'   <span class="cm">-- no index</span>
+WHERE name LIKE 'Alice%'    <span class="cm">-- B-tree допомагає!</span></div>
+      </div>
+    </div>
+
+    <!-- 6: write overhead -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-amber">overhead</span>
+        <h2>Індекси і write overhead</h2>
+        <p>Кожен індекс потребує оновлення при INSERT/UPDATE/DELETE. Забагато індексів → повільні writes.</p>
+        <div class="code"><span class="cm">-- Перевірити використання індексів</span>
+SELECT schemaname, tablename, indexname,
+       idx_scan, idx_tup_read, idx_tup_fetch
+FROM pg_stat_user_indexes
+WHERE schemaname = 'public'
+ORDER BY idx_scan ASC;  <span class="cm">-- idx_scan=0 → невикористаний індекс</span>
+
+<span class="cm">-- Розмір індексів</span>
+SELECT indexname, pg_size_pretty(pg_relation_size(indexname::regclass))
+FROM pg_indexes
+WHERE tablename = 'orders';
+
+<span class="cm">-- REINDEX: перебудувати пошкоджений або bloated індекс</span>
+REINDEX INDEX CONCURRENTLY idx_orders_user_id;
+
+<span class="cm">-- CREATE INDEX CONCURRENTLY: без блокування writes</span>
+CREATE INDEX CONCURRENTLY idx_orders_status ON orders(status);
+<span class="cm">-- Займає більше часу, але не блокує INSERT/UPDATE/DELETE</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> B-tree = balanced tree O(log n), left-prefix rule для composite, covering index = Index Only Scan, EXPLAIN показує план і actual time, функції над колонкою ламають індекс → functional index.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

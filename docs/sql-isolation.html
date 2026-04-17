@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Isolation levels, deadlock, SELECT FOR UPDATE — PostgreSQL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--blue);background:var(--blue-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--blue)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0;font-size:12.5px}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Isolation levels, deadlock, SELECT FOR UPDATE</h1>
+  <span class="header-tag">PostgreSQL</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Isolation</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Аномалії конкурентності</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>4 рівні ізоляції</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>READ COMMITTED детально</div>
+    <div class="sidebar-section">Locking</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>SELECT FOR UPDATE</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Deadlock в PostgreSQL</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Advisory locks</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>SKIP LOCKED і queue</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-blue">аномалії</span>
+        <h2>Аномалії конкурентного доступу</h2>
+        <ul>
+          <li><strong>Dirty read</strong> — читаємо незакомічені зміни іншої транзакції</li>
+          <li><strong>Non-repeatable read</strong> — один і той самий SELECT дає різні результати в рамках транзакції (хтось змінив рядок і закомітив)</li>
+          <li><strong>Phantom read</strong> — повторний SELECT повертає нові рядки (хтось додав рядки що підпадають під WHERE)</li>
+          <li><strong>Serialization anomaly</strong> — результат не відповідає жодному можливому послідовному виконанню транзакцій</li>
+        </ul>
+        <div class="callout callout-info">
+          <strong>PostgreSQL і dirty read:</strong> навіть на рівні READ UNCOMMITTED — PostgreSQL ніколи не дозволяє dirty read. Мінімальний рівень ефективно = READ COMMITTED.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: 4 рівні -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-blue">isolation</span>
+        <h2>4 рівні ізоляції</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Рівень</th><th>Dirty read</th><th>Non-repeatable</th><th>Phantom</th><th>Serial anomaly</th></tr></thead>
+            <tbody>
+              <tr><td><code>READ UNCOMMITTED</code></td><td class="td-bad">можливо*</td><td class="td-bad">можливо</td><td class="td-bad">можливо</td><td class="td-bad">можливо</td></tr>
+              <tr><td><code>READ COMMITTED</code></td><td class="td-good">захищено</td><td class="td-bad">можливо</td><td class="td-bad">можливо</td><td class="td-bad">можливо</td></tr>
+              <tr><td><code>REPEATABLE READ</code></td><td class="td-good">захищено</td><td class="td-good">захищено</td><td class="td-good">захищено*</td><td class="td-bad">можливо</td></tr>
+              <tr><td><code>SERIALIZABLE</code></td><td class="td-good">захищено</td><td class="td-good">захищено</td><td class="td-good">захищено</td><td class="td-good">захищено</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:.5rem;font-size:12px;color:var(--muted)">* PostgreSQL не допускає dirty read навіть на READ UNCOMMITTED. REPEATABLE READ захищає від phantom read завдяки snapshot isolation.</p>
+        <div class="code" style="margin-top:.75rem"><span class="cm">-- Встановити рівень для транзакції</span>
+BEGIN;
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+...
+COMMIT;
+
+<span class="cm">-- Або для сесії</span>
+SET default_transaction_isolation = 'repeatable read';
+
+<span class="cm">-- PostgreSQL default: READ COMMITTED</span>
+<span class="cm">-- MySQL InnoDB default: REPEATABLE READ</span></div>
+      </div>
+    </div>
+
+    <!-- 2: READ COMMITTED -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">READ COMMITTED</span>
+        <h2>READ COMMITTED детально</h2>
+        <p>Default у PostgreSQL. Кожен окремий SQL-вираз бачить snapshot на момент <strong>свого</strong> початку (не початку транзакції). Тому можливий non-repeatable read.</p>
+        <div class="code"><span class="cm">-- Non-repeatable read при READ COMMITTED</span>
+<span class="cm">-- TX1:</span>
+BEGIN;
+SELECT balance FROM accounts WHERE id = 1;  <span class="cm">-- → 1000</span>
+<span class="cm">-- [TX2 робить UPDATE balance=500, COMMIT]</span>
+SELECT balance FROM accounts WHERE id = 1;  <span class="cm">-- → 500 (інший результат!)</span>
+COMMIT;
+
+<span class="cm">-- REPEATABLE READ: обидва SELECT повернуть 1000</span>
+<span class="cm">-- snapshot фіксується на початку транзакції</span>
+BEGIN ISOLATION LEVEL REPEATABLE READ;
+SELECT balance FROM accounts WHERE id = 1;  <span class="cm">-- → 1000</span>
+<span class="cm">-- [TX2 робить UPDATE, COMMIT]</span>
+SELECT balance FROM accounts WHERE id = 1;  <span class="cm">-- → 1000 (той самий snapshot)</span>
+COMMIT;</div>
+        <div class="callout callout-info">
+          При REPEATABLE READ якщо TX1 намагається UPDATE рядок що вже змінила TX2 і закомітила — PostgreSQL кине <code>ERROR: could not serialize access due to concurrent update</code>. Потрібен retry.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: SELECT FOR UPDATE -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-amber">SELECT FOR UPDATE</span>
+        <h2>SELECT FOR UPDATE — pessimistic locking</h2>
+        <p>Блокує вибрані рядки до кінця транзакції. Інші транзакції чекають або отримують помилку.</p>
+        <div class="code"><span class="cm">-- Класичний use case: дебет рахунку</span>
+BEGIN;
+SELECT balance FROM accounts
+WHERE id = 42
+FOR UPDATE;              <span class="cm">-- блокуємо рядок</span>
+
+<span class="cm">-- Тепер ніхто не може UPDATE цей рядок</span>
+UPDATE accounts SET balance = balance - 100 WHERE id = 42;
+COMMIT;
+
+<span class="cm">-- Варіанти</span>
+FOR UPDATE              <span class="cm">-- ексклюзивний lock</span>
+FOR SHARE               <span class="cm">-- shared lock (кілька читачів, блокує writers)</span>
+FOR NO KEY UPDATE       <span class="cm">-- не блокує FK reads</span>
+FOR KEY SHARE           <span class="cm">-- shared lock на key columns</span>
+
+<span class="cm">-- NOWAIT: не чекати, одразу помилка якщо lock зайнятий</span>
+SELECT * FROM orders WHERE id = 1 FOR UPDATE NOWAIT;
+
+<span class="cm">-- SKIP LOCKED: пропустити заблоковані рядки</span>
+SELECT * FROM jobs WHERE status = 'PENDING'
+FOR UPDATE SKIP LOCKED
+LIMIT 10;</div>
+        <div class="callout callout-ok">
+          <code>SKIP LOCKED</code> — стандартний патерн для queue processing. Кожен worker бере 10 невідкладних задач без блокування інших workers.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: deadlock -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-red">deadlock</span>
+        <h2>Deadlock в PostgreSQL</h2>
+        <p>PostgreSQL автоматично виявляє deadlock і завершує одну з транзакцій з помилкою <code>ERROR: deadlock detected</code>.</p>
+        <div class="code"><span class="cm">-- Класичний deadlock</span>
+<span class="cm">-- TX1:                           TX2:</span>
+BEGIN;                          BEGIN;
+UPDATE accounts SET ...         UPDATE accounts SET ...
+  WHERE id = 1;  <span class="cm">-- lock 1</span>       WHERE id = 2;  <span class="cm">-- lock 2</span>
+
+UPDATE accounts SET ...         UPDATE accounts SET ...
+  WHERE id = 2;  <span class="cm">-- чекає TX2</span>   WHERE id = 1;  <span class="cm">-- чекає TX1</span>
+<span class="cm">--                               → DEADLOCK!</span>
+<span class="cm">-- PostgreSQL вибирає жертву і rollback</span>
+
+<span class="cm">-- Запобігання: фіксований порядок блокування</span>
+<span class="cm">-- Завжди блокувати в одному порядку (за id ASC)</span>
+UPDATE accounts SET ... WHERE id IN (1, 2) ORDER BY id;
+<span class="cm">-- або два UPDATE в порядку зростання id</span></div>
+        <div class="callout callout-warn">
+          При deadlock PostgreSQL логує деталі в pg_log. Перевіряй: <code>SELECT * FROM pg_locks;</code> і <code>SELECT * FROM pg_stat_activity;</code> для моніторингу активних lock-ів.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: advisory locks -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-teal">advisory locks</span>
+        <h2>Advisory Locks</h2>
+        <p>Application-level locks на довільний integer ключ. Не пов'язані з конкретними рядками — для координації між додатками.</p>
+        <div class="code"><span class="cm">-- Session-level: тримається до явного unlock або відключення</span>
+SELECT pg_advisory_lock(12345);       <span class="cm">-- отримати lock</span>
+SELECT pg_advisory_unlock(12345);     <span class="cm">-- звільнити</span>
+
+<span class="cm">-- Transaction-level: автоматично звільняється при commit/rollback</span>
+SELECT pg_advisory_xact_lock(12345);
+
+<span class="cm">-- Non-blocking: повертає false якщо lock зайнятий</span>
+SELECT pg_try_advisory_lock(12345);
+
+<span class="cm">-- Shared lock</span>
+SELECT pg_advisory_lock_shared(12345);
+
+<span class="cm">-- Типовий use case: scheduled job (один виконавець)</span>
+BEGIN;
+SELECT pg_try_advisory_xact_lock(hashtext('daily-report'));
+<span class="cm">-- якщо false → інший процес вже виконує</span>
+<span class="cm">-- якщо true → виконуємо задачу</span>
+COMMIT;</code></div>
+      </div>
+    </div>
+
+    <!-- 6: SKIP LOCKED -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-green">queue патерн</span>
+        <h2>SKIP LOCKED — queue processing</h2>
+        <div class="code"><span class="cm">-- Таблиця-черга задач</span>
+CREATE TABLE jobs (
+    id BIGSERIAL PRIMARY KEY,
+    status VARCHAR(20) DEFAULT 'PENDING',
+    payload JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+<span class="cm">-- Worker: атомарно бере і блокує задачі</span>
+WITH next_jobs AS (
+    SELECT id FROM jobs
+    WHERE status = 'PENDING'
+    ORDER BY created_at
+    LIMIT 5
+    FOR UPDATE SKIP LOCKED    <span class="cm">-- пропускаємо зайняті іншими workers</span>
+)
+UPDATE jobs SET status = 'PROCESSING'
+WHERE id IN (SELECT id FROM next_jobs)
+RETURNING *;
+
+<span class="cm">-- Кілька workers можуть виконувати паралельно</span>
+<span class="cm">-- SKIP LOCKED гарантує: кожна задача одному worker</span></div>
+        <div class="callout callout-ok">
+          PostgreSQL як message queue — простий і надійний підхід для невеликих обсягів задач. При великих throughput (тисячі задач/сек) — краще Kafka або RabbitMQ.
+        </div>
+        <div class="callout callout-info" style="margin-top:.5rem">
+          <strong>На співбесіді:</strong> 4 аномалії (dirty/non-repeatable/phantom/serial), READ COMMITTED = snapshot per statement, REPEATABLE READ = snapshot per transaction, SELECT FOR UPDATE = row-level lock, SKIP LOCKED для queue, PostgreSQL auto-detects deadlock.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>
