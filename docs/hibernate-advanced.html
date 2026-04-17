@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@Version, Cascade, L2 cache, Specifications — Hibernate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--purple);background:var(--purple-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--purple)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-purple{background:var(--purple-bg);color:var(--purple)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>@Version, Cascade, L2 cache, Specifications</h1>
+  <span class="header-tag">Hibernate / JPA</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Locking</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>@Version — optimistic locking</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Pessimistic locking</div>
+    <div class="sidebar-section">Cascade</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>CascadeType</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>orphanRemoval</div>
+    <div class="sidebar-section">Cache і запити</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>L1 і L2 кеш</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Spring Data Specifications</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Querydsl</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0: @Version -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-purple">optimistic locking</span>
+        <h2>@Version — оптимістичне блокування</h2>
+        <p>Без блокування рядку в DB. При update — перевіряємо що version не змінилась. Якщо хтось встиг раніше — <code>OptimisticLockException</code>.</p>
+        <div class="code"><span class="ann">@Entity</span>
+<span class="kw">class</span> <span class="cls">Account</span> {
+    <span class="ann">@Id</span> <span class="kw">private long</span> id;
+    <span class="kw">private</span> <span class="cls">BigDecimal</span> balance;
+
+    <span class="ann">@Version</span>           <span class="cm">// Hibernate управляє автоматично</span>
+    <span class="kw">private int</span> version;
+}
+
+<span class="cm">// Hibernate генерує:</span>
+<span class="cm">// UPDATE accounts SET balance=?, version=2 WHERE id=1 AND version=1</span>
+<span class="cm">// Якщо version вже 2 (хтось змінив) → 0 rows affected → exception</span></div>
+        <div class="callout callout-info">
+          <strong>Коли використовувати:</strong> read-heavy з рідкісними конфліктами. Не блокує рядки → висока паралельність. При конфлікті — retries або повідомлення користувачу. Підходить для більшості web-застосунків.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Обробка OptimisticLockException</h3>
+        <div class="code"><span class="ann">@Retryable</span>(retryFor = <span class="cls">OptimisticLockingFailureException</span>.<span class="kw">class</span>,
+           maxAttempts = <span class="num">3</span>)
+<span class="ann">@Transactional</span>
+<span class="kw">public void</span> transferFunds(<span class="kw">long</span> fromId, <span class="kw">long</span> toId, <span class="cls">BigDecimal</span> amount) {
+    <span class="cls">Account</span> from = repo.findById(fromId).orElseThrow();
+    <span class="cls">Account</span> to   = repo.findById(toId).orElseThrow();
+    from.debit(amount);
+    to.credit(amount);
+}
+<span class="cm">// @Retryable з spring-retry — простий retry при конфлікті</span></div>
+      </div>
+    </div>
+
+    <!-- 1: pessimistic -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-red">pessimistic locking</span>
+        <h2>Pessimistic locking</h2>
+        <p>Блокує рядок в DB на час транзакції. Підходить при частих конфліктах або critical sections. <code>SELECT ... FOR UPDATE</code>.</p>
+        <div class="code"><span class="cm">// Spring Data</span>
+<span class="ann">@Lock</span>(<span class="cls">LockModeType</span>.PESSIMISTIC_WRITE)
+<span class="cls">Optional</span>&lt;<span class="cls">Account</span>&gt; findById(<span class="cls">Long</span> id);
+<span class="cm">// → SELECT * FROM accounts WHERE id=? FOR UPDATE</span>
+
+<span class="cm">// LockModeType варіанти</span>
+<span class="cls">PESSIMISTIC_READ</span>   <span class="cm">// SELECT FOR SHARE — дозволяє паралельні reads</span>
+<span class="cls">PESSIMISTIC_WRITE</span>  <span class="cm">// SELECT FOR UPDATE — ексклюзивний</span>
+
+<span class="cm">// Через EntityManager</span>
+em.find(<span class="cls">Account</span>.<span class="kw">class</span>, id, <span class="cls">LockModeType</span>.PESSIMISTIC_WRITE);
+
+<span class="cm">// З таймаутом (PostgreSQL)</span>
+<span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; hints = <span class="cls">Map</span>.of(
+    <span class="str">"javax.persistence.lock.timeout"</span>, <span class="num">5000</span>  <span class="cm">// 5 секунд</span>
+);
+em.find(<span class="cls">Account</span>.<span class="kw">class</span>, id, <span class="cls">LockModeType</span>.PESSIMISTIC_WRITE, hints);</div>
+        <div class="callout callout-warn">
+          Pessimistic locking може призвести до deadlock якщо два потоки захоплюють локи в різному порядку. Завжди набувай локи в фіксованому порядку (наприклад, за id).
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: cascade -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">cascade</span>
+        <h2>CascadeType</h2>
+        <p>Визначає які операції з parent entity каскадуються на child entities.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>CascadeType</th><th>Що каскадує</th></tr></thead>
+            <tbody>
+              <tr><td><code>PERSIST</code></td><td>em.persist(parent) → persist(children)</td></tr>
+              <tr><td><code>MERGE</code></td><td>em.merge(parent) → merge(children)</td></tr>
+              <tr><td><code>REMOVE</code></td><td>em.remove(parent) → remove(children)</td></tr>
+              <tr><td><code>REFRESH</code></td><td>em.refresh(parent) → refresh(children)</td></tr>
+              <tr><td><code>DETACH</code></td><td>em.detach(parent) → detach(children)</td></tr>
+              <tr><td><code>ALL</code></td><td>всі вище разом</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code" style="margin-top:.75rem"><span class="ann">@Entity</span>
+<span class="kw">class</span> <span class="cls">Order</span> {
+    <span class="ann">@OneToMany</span>(mappedBy = <span class="str">"order"</span>, cascade = <span class="cls">CascadeType</span>.ALL)
+    <span class="kw">private</span> <span class="cls">List</span>&lt;<span class="cls">Item</span>&gt; items;
+}
+
+<span class="cm">// persist(order) → автоматично persist(items)</span>
+<span class="cls">Order</span> order = <span class="kw">new</span> <span class="cls">Order</span>();
+order.addItem(<span class="kw">new</span> <span class="cls">Item</span>(<span class="str">"Book"</span>));
+repo.save(order); <span class="cm">// Item теж збережеться</span></div>
+        <div class="callout callout-warn">
+          <code>CascadeType.REMOVE</code> при <code>@ManyToMany</code> — небезпечно. Видалення одного entity може видалити entities що шеряться між іншими. Для ManyToMany зазвичай тільки <code>PERSIST</code> і <code>MERGE</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: orphanRemoval -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-teal">orphanRemoval</span>
+        <h2>orphanRemoval</h2>
+        <p>Автоматично видаляє child entity якщо вона більше не має parent. Доповнює <code>CascadeType.REMOVE</code> але для disconnection, не delete parent.</p>
+        <div class="code"><span class="ann">@OneToMany</span>(mappedBy = <span class="str">"order"</span>,
+           cascade = <span class="cls">CascadeType</span>.ALL,
+           orphanRemoval = <span class="kw">true</span>)
+<span class="kw">private</span> <span class="cls">List</span>&lt;<span class="cls">Item</span>&gt; items;
+
+<span class="cm">// Видалити item з колекції → DELETE SQL</span>
+<span class="cls">Order</span> order = repo.findById(orderId).get();
+order.getItems().remove(item); <span class="cm">// orphan → DELETE FROM items WHERE id=?</span>
+
+<span class="cm">// CascadeType.REMOVE vs orphanRemoval:</span>
+<span class="cm">// REMOVE: видаляємо PARENT → видаляються children</span>
+<span class="cm">// orphanRemoval: прибираємо child з колекції → видаляється child</span></div>
+        <div class="callout callout-info">
+          <code>orphanRemoval</code> доступний тільки для <code>@OneToOne</code> і <code>@OneToMany</code> — де child "належить" одному parent. Для <code>@ManyToMany</code> — концептуально не підходить.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: L1/L2 cache -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-green">cache</span>
+        <h2>L1 і L2 кеш Hibernate</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th></th><th>L1 (First Level)</th><th>L2 (Second Level)</th></tr></thead>
+            <tbody>
+              <tr><td>Scope</td><td>EntityManager / транзакція</td><td>SessionFactory / весь застосунок</td></tr>
+              <tr><td>Вмикається</td><td class="td-good">завжди (не вимкнути)</td><td>явно (@Cache)</td></tr>
+              <tr><td>Між транзакціями</td><td class="td-bad">ні</td><td class="td-good">так</td></tr>
+              <tr><td>Між нодами</td><td class="td-bad">ні</td><td class="td-warn">тільки з distributed cache</td></tr>
+              <tr><td>Реалізації</td><td>вбудований</td><td>Ehcache, Redis, Hazelcast</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code" style="margin-top:.75rem"><span class="cm">// Увімкнути L2 cache</span>
+spring.jpa.properties.hibernate.cache.use_second_level_cache=true
+spring.jpa.properties.hibernate.cache.region.factory_class=...
+
+<span class="cm">// @Cache на entity</span>
+<span class="ann">@Entity</span>
+<span class="ann">@Cache</span>(usage = <span class="cls">CacheConcurrencyStrategy</span>.READ_WRITE)
+<span class="kw">class</span> <span class="cls">Category</span> { ... } <span class="cm">// рідко змінюється → хороший кандидат</span>
+
+<span class="cm">// @Cache на колекцію</span>
+<span class="ann">@OneToMany</span>
+<span class="ann">@Cache</span>(usage = <span class="cls">CacheConcurrencyStrategy</span>.READ_ONLY)
+<span class="kw">private</span> <span class="cls">Set</span>&lt;<span class="cls">Tag</span>&gt; tags;</div>
+        <div class="callout callout-warn">
+          L2 cache + розподілена система — небезпека stale data. При UPDATE через JDBC (нативний SQL, не HQL) — Hibernate не знає про зміну → L2 cache не інвалідується. Тільки через <code>@Modifying</code> query або явна інвалідація.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: Specifications -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-blue">Spring Data</span>
+        <h2>Spring Data Specifications</h2>
+        <p>Динамічні запити через JPA Criteria API без написання рядків JPQL. Compositional — можна комбінувати через <code>and()</code>, <code>or()</code>.</p>
+        <div class="code"><span class="cm">// Repository extends JpaSpecificationExecutor</span>
+<span class="kw">interface</span> <span class="cls">OrderRepo</span> <span class="kw">extends</span>
+    <span class="cls">JpaRepository</span>&lt;<span class="cls">Order</span>, <span class="cls">Long</span>&gt;,
+    <span class="cls">JpaSpecificationExecutor</span>&lt;<span class="cls">Order</span>&gt; {}
+
+<span class="cm">// Specification = один предикат</span>
+<span class="kw">class</span> <span class="cls">OrderSpecs</span> {
+    <span class="kw">static</span> <span class="cls">Specification</span>&lt;<span class="cls">Order</span>&gt; hasStatus(<span class="cls">String</span> status) {
+        <span class="kw">return</span> (root, query, cb) ->
+            cb.equal(root.get(<span class="str">"status"</span>), status);
+    }
+
+    <span class="kw">static</span> <span class="cls">Specification</span>&lt;<span class="cls">Order</span>&gt; totalGreaterThan(<span class="cls">BigDecimal</span> min) {
+        <span class="kw">return</span> (root, query, cb) ->
+            cb.greaterThan(root.get(<span class="str">"total"</span>), min);
+    }
+}
+
+<span class="cm">// Комбінування</span>
+<span class="cls">Specification</span>&lt;<span class="cls">Order</span>&gt; spec =
+    <span class="cls">OrderSpecs</span>.hasStatus(<span class="str">"PAID"</span>)
+        .and(<span class="cls">OrderSpecs</span>.totalGreaterThan(<span class="kw">new</span> <span class="cls">BigDecimal</span>(<span class="str">"100"</span>)));
+
+repo.findAll(spec, <span class="cls">PageRequest</span>.of(<span class="num">0</span>, <span class="num">20</span>));</div>
+      </div>
+    </div>
+
+    <!-- 6: Querydsl -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-blue">Querydsl</span>
+        <h2>Querydsl — type-safe альтернатива</h2>
+        <p>Генерує Q-класи з entity. Type-safe запити — помилки при компіляції, автодоповнення IDE.</p>
+        <div class="code"><span class="cm">// Генерований Q-клас (APT)</span>
+<span class="cm">// QOrder.order — для Order entity</span>
+
+<span class="cm">// Repository extends QuerydslPredicateExecutor</span>
+<span class="kw">interface</span> <span class="cls">OrderRepo</span> <span class="kw">extends</span>
+    <span class="cls">JpaRepository</span>&lt;<span class="cls">Order</span>, <span class="cls">Long</span>&gt;,
+    <span class="cls">QuerydslPredicateExecutor</span>&lt;<span class="cls">Order</span>&gt; {}
+
+<span class="cm">// Запит</span>
+<span class="cls">QOrder</span> order = <span class="cls">QOrder</span>.order;
+<span class="cls">BooleanExpression</span> predicate = order.status.eq(<span class="str">"PAID"</span>)
+    .and(order.total.gt(<span class="kw">new</span> <span class="cls">BigDecimal</span>(<span class="str">"100"</span>)))
+    .and(order.createdAt.after(<span class="cls">LocalDateTime</span>.now().minusDays(<span class="num">30</span>)));
+
+repo.findAll(predicate);</div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>Specifications vs Querydsl:</strong> Specifications — стандарт Spring Data, менше залежностей. Querydsl — краще IDE підтримка, type-safe, але потрібна APT генерація. Для простих запитів — Specifications достатньо.
+        </div>
+        <div class="callout callout-info">
+          <strong>На співбесіді:</strong> @Version = version column, UPDATE WHERE version=old, OptimisticLockException. CascadeType.REMOVE vs orphanRemoval (delete parent vs remove from collection). L1 = PC scope, L2 = SessionFactory scope. Specifications для динамічних запитів.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

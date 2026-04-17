@@ -346,40 +346,40 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
     </div>
     <div class="grid">
 
-      <div class="card wip" style="--accent:var(--purple)">
+      <a href="hibernate-lifecycle.html" class="card" style="--accent:var(--purple)">
         <div class="card-tag t-purple">Hibernate</div>
         <h3>Entity lifecycle, persistence context, dirty checking</h3>
-        <p>стани entity, session, dirty checking механізм.</p>
+        <p>Стани entity, session, dirty checking механізм, flush.</p>
         <div class="card-chips"><span class="chip">transient</span><span class="chip">managed</span><span class="chip">detached</span></div>
-      </div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--purple)">
+      <a href="hibernate-n1.html" class="card" style="--accent:var(--purple)">
         <div class="card-tag t-purple">Hibernate</div>
         <h3>LAZY vs EAGER, @EntityGraph, JOIN FETCH</h3>
-        <p>N+1 проблема і 3 способи вирішення.</p>
+        <p>N+1 проблема і 4 способи вирішення.</p>
         <div class="card-chips"><span class="chip">N+1</span><span class="chip">@EntityGraph</span><span class="chip">@BatchSize</span></div>
-      </div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--purple)">
+      <a href="hibernate-advanced.html" class="card" style="--accent:var(--purple)">
         <div class="card-tag t-purple">Hibernate</div>
-        <h3>@Version, CascadeType, orphanRemoval</h3>
-        <p>optimistic locking, cascade стратегії, orphan видалення.</p>
-        <div class="card-chips"><span class="chip">optimistic</span><span class="chip">cascade</span><span class="chip">orphan</span></div>
-      </div>
+        <h3>@Version, CascadeType, L2 cache, Specifications</h3>
+        <p>optimistic locking, cascade стратегії, L1/L2 cache, Querydsl.</p>
+        <div class="card-chips"><span class="chip">optimistic</span><span class="chip">cascade</span><span class="chip">L2 cache</span></div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--purple)">
-        <div class="card-tag t-purple">Hibernate</div>
-        <h3>L1/L2 кеш Hibernate, Spring Data Specifications</h3>
-        <p>рівні кешу, Ehcache, динамічні запити через Specification.</p>
-        <div class="card-chips"><span class="chip">L1 cache</span><span class="chip">L2 cache</span><span class="chip">Specification</span></div>
-      </div>
-
-      <div class="card wip" style="--accent:var(--purple)">
-        <div class="card-tag t-purple">DB</div>
+      <a href="liquibase.html" class="card" style="--accent:var(--teal)">
+        <div class="card-tag t-teal">DB</div>
         <h3>Liquibase міграції</h3>
         <p>changeset, zero-downtime patterns, rollback стратегії.</p>
         <div class="card-chips"><span class="chip">changeset</span><span class="chip">zero-downtime</span><span class="chip">rollback</span></div>
-      </div>
+      </a>
+
+      <a href="redis.html" class="card" style="--accent:var(--red)">
+        <div class="card-tag t-red">Redis</div>
+        <h3>Redis: структури, кешування, Spring</h3>
+        <p>5 структур даних, @Cacheable, cache-aside, distributed lock.</p>
+        <div class="card-chips"><span class="chip">@Cacheable</span><span class="chip">cache-aside</span><span class="chip">Redisson</span></div>
+      </a>
 
     </div>
   </div>

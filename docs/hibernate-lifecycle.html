@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hibernate: Entity lifecycle, Persistence Context — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--purple);background:var(--purple-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--purple)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-purple{background:var(--purple-bg);color:var(--purple)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+.state-row{display:flex;align-items:center;gap:.6rem;margin:.4rem 0;flex-wrap:wrap}
+.state-box{font-size:12px;font-family:var(--font-mono);padding:4px 12px;border-radius:6px;border:1px solid;font-weight:500}
+.s-transient{background:var(--bg3);border-color:var(--hint);color:var(--muted)}
+.s-managed{background:var(--green-bg);border-color:rgba(78,202,139,.4);color:var(--green)}
+.s-detached{background:var(--amber-bg);border-color:rgba(240,168,67,.4);color:var(--amber)}
+.s-removed{background:var(--red-bg);border-color:rgba(240,90,90,.4);color:var(--red)}
+.arrow{color:var(--hint);font-size:12px;font-family:var(--font-mono)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Entity lifecycle, Persistence Context</h1>
+  <span class="header-tag">Hibernate / JPA</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Стани Entity</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>4 стани entity</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Persistence Context</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Dirty checking</div>
+    <div class="sidebar-section">Операції</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>persist, merge, remove</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>flush і flush modes</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>detach і clear</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Антипатерни</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-purple">стани</span>
+        <h2>4 стани Entity</h2>
+        <div class="state-row">
+          <span class="state-box s-transient">Transient</span>
+          <span class="arrow">→ persist() →</span>
+          <span class="state-box s-managed">Managed</span>
+        </div>
+        <div class="state-row" style="padding-left:1rem">
+          <span class="arrow">Managed →</span>
+          <span class="state-box s-detached">Detached</span>
+          <span class="arrow">→ merge() →</span>
+          <span class="state-box s-managed">Managed</span>
+        </div>
+        <div class="state-row" style="padding-left:1rem">
+          <span class="arrow">Managed →</span>
+          <span class="state-box s-removed">Removed</span>
+          <span class="arrow">→ flush →</span>
+          <span class="arrow">DELETE SQL</span>
+        </div>
+        <div class="code" style="margin-top:.75rem"><span class="cm">// Transient: новий об'єкт, JPA не знає про нього</span>
+<span class="cls">Order</span> order = <span class="kw">new</span> <span class="cls">Order</span>();   <span class="cm">// transient</span>
+order.setTotal(<span class="cls">BigDecimal</span>.TEN);
+
+<span class="cm">// Managed: під контролем Persistence Context</span>
+entityManager.persist(order);  <span class="cm">// → managed, буде INSERT при flush</span>
+<span class="cm">// або після findById:</span>
+<span class="cls">Order</span> found = em.find(<span class="cls">Order</span>.<span class="kw">class</span>, id); <span class="cm">// managed</span>
+
+<span class="cm">// Detached: вийшов за межі PC (сесія закрита або em.detach())</span>
+<span class="cls">Order</span> detached = found; <span class="cm">// після закриття транзакції</span>
+detached.setTotal(newTotal); <span class="cm">// зміна не відслідковується!</span>
+
+<span class="cm">// Removed: позначений для видалення</span>
+em.remove(found);  <span class="cm">// → removed, DELETE при flush</span></div>
+      </div>
+    </div>
+
+    <!-- 1: PC -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-purple">persistence context</span>
+        <h2>Persistence Context (PC)</h2>
+        <p>Persistence Context — кеш першого рівня. Зберігає всі managed entities в рамках транзакції. Один EntityManager = один PC. В Spring — PC живе в рамках транзакції.</p>
+        <div class="code"><span class="cm">// PC як identity map: key = (EntityClass, id)</span>
+<span class="cls">Order</span> o1 = repo.findById(<span class="num">1L</span>).get();
+<span class="cls">Order</span> o2 = repo.findById(<span class="num">1L</span>).get();
+o1 == o2; <span class="cm">// true! Другий запит → з PC кешу, не з DB</span>
+
+<span class="cm">// Але між транзакціями — різні PC</span>
+<span class="ann">@Transactional</span>
+<span class="kw">void</span> tx1() { <span class="cls">Order</span> o = repo.findById(<span class="num">1L</span>).get(); }
+
+<span class="ann">@Transactional</span>
+<span class="kw">void</span> tx2() {
+    <span class="cls">Order</span> o = repo.findById(<span class="num">1L</span>).get();  <span class="cm">// нова PC → SQL запит</span>
+}</div>
+        <div class="callout callout-info">
+          <strong>OSIV (Open Session in View)</strong> — Spring Boot за замовчуванням відкриває EntityManager на весь HTTP запит (не тільки транзакцію). Це дозволяє lazy loading у View шарі, але тримає DB з'єднання довше. Вимикають: <code>spring.jpa.open-in-view=false</code>.
+        </div>
+      </div>
+      <div class="card">
+        <h3>EntityManager vs Spring Data Repository</h3>
+        <div class="code"><span class="cm">// Spring Data Repository — обгортка над EntityManager</span>
+<span class="cm">// findById() → em.find()</span>
+<span class="cm">// save() нового → em.persist()</span>
+<span class="cm">// save() існуючого (з id) → em.merge()</span>
+<span class="cm">// delete() → em.remove()</span>
+
+<span class="cm">// Пряме використання EM</span>
+<span class="ann">@PersistenceContext</span>
+<span class="kw">private</span> <span class="cls">EntityManager</span> em;
+
+<span class="cls">Order</span> order = em.find(<span class="cls">Order</span>.<span class="kw">class</span>, id);
+em.persist(order);
+em.flush();</div>
+      </div>
+    </div>
+
+    <!-- 2: dirty checking -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-purple">dirty checking</span>
+        <h2>Dirty Checking</h2>
+        <p>Hibernate порівнює стан managed entity з snapshot при завантаженні. При flush — генерує UPDATE для змінених полів. Автоматично, без явного save().</p>
+        <div class="code"><span class="ann">@Transactional</span>
+<span class="kw">void</span> updateOrder(<span class="kw">long</span> id, <span class="cls">BigDecimal</span> newTotal) {
+    <span class="cls">Order</span> order = repo.findById(id).orElseThrow();
+    order.setTotal(newTotal);    <span class="cm">// просто сетер!</span>
+    <span class="cm">// repo.save(order) НЕ ПОТРІБНО</span>
+    <span class="cm">// При commit: Hibernate знайде різницю → UPDATE SQL</span>
+}
+
+<span class="cm">// Як Hibernate відслідковує:</span>
+<span class="cm">// 1. При завантаженні — зберігає snapshot стан</span>
+<span class="cm">// 2. При flush — порівнює current state з snapshot</span>
+<span class="cm">// 3. Якщо різниця — генерує UPDATE</span></div>
+        <div class="callout callout-warn">
+          <strong>Overhead dirty checking:</strong> при великих колекціях managed entities в PC — Hibernate порівнює всі при flush. При batch обробці (тисячі entities) — використовуй <code>em.clear()</code> або stateless session.
+        </div>
+      </div>
+      <div class="card">
+        <h3>@DynamicUpdate — UPDATE тільки змінених колонок</h3>
+        <div class="code"><span class="cm">// За замовчуванням: UPDATE з усіма полями</span>
+<span class="cm">// UPDATE orders SET total=?, status=?, created_at=? WHERE id=?</span>
+
+<span class="cm">// З @DynamicUpdate: тільки змінені</span>
+<span class="ann">@Entity</span>
+<span class="ann">@DynamicUpdate</span>
+<span class="kw">class</span> <span class="cls">Order</span> { ... }
+<span class="cm">// UPDATE orders SET total=? WHERE id=?</span>
+
+<span class="cm">// Коли корисно: entity з багатьма полями, часті часткові оновлення</span>
+<span class="cm">// Мінус: не можна кешувати prepared statement</span></div>
+      </div>
+    </div>
+
+    <!-- 3: persist merge remove -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-teal">операції</span>
+        <h2>persist, merge, remove</h2>
+        <div class="code"><span class="cm">// persist: Transient → Managed</span>
+<span class="cm">// INSERT виконається при flush</span>
+<span class="cm">// Якщо entity вже Managed — ігнорується</span>
+<span class="cm">// Якщо Detached — IllegalArgumentException</span>
+em.persist(newOrder);
+
+<span class="cm">// merge: Detached → Managed (копія!)</span>
+<span class="cm">// Повертає НОВИЙ managed екземпляр</span>
+<span class="cm">// Оригінальний detached залишається detached</span>
+<span class="cls">Order</span> managed = em.merge(detachedOrder); <span class="cm">// не той самий об'єкт!</span>
+managed.setTotal(newTotal); <span class="cm">// tracked</span>
+detachedOrder.setTotal(newTotal); <span class="cm">// НЕ tracked</span>
+
+<span class="cm">// remove: Managed → Removed</span>
+<span class="cm">// DELETE виконається при flush</span>
+<span class="cm">// Якщо Detached → IllegalArgumentException</span>
+em.remove(managedOrder);</div>
+        <div class="callout callout-warn">
+          <strong>Пастка merge:</strong> <code>em.merge()</code> повертає новий об'єкт. Якщо продовжувати працювати з оригінальним detached — зміни не збережуться. Завжди використовуй повернутий екземпляр.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Spring Data: save() — persist чи merge?</h3>
+        <div class="code"><span class="cm">// SimpleJpaRepository.save():</span>
+<span class="kw">public</span> &lt;S <span class="kw">extends</span> T&gt; S save(S entity) {
+    <span class="kw">if</span> (entityInformation.isNew(entity)) {
+        em.persist(entity);    <span class="cm">// id == null → persist</span>
+        <span class="kw">return</span> entity;
+    } <span class="kw">else</span> {
+        <span class="kw">return</span> em.merge(entity); <span class="cm">// id != null → merge</span>
+    }
+}
+
+<span class="cm">// isNew() перевіряє: id == null (або @Version == null)</span>
+<span class="cm">// Власна логіка: implements Persistable&lt;ID&gt;</span></div>
+      </div>
+    </div>
+
+    <!-- 4: flush -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-teal">flush</span>
+        <h2>flush і FlushMode</h2>
+        <p>Flush — синхронізація стану PC з базою (генерація SQL). Не те саме що commit. Flush може відбутись кілька разів в рамках однієї транзакції.</p>
+        <div class="code"><span class="cm">// FlushModeType</span>
+<span class="cls">FlushModeType</span>.AUTO    <span class="cm">// flush перед query і перед commit (default)</span>
+<span class="cls">FlushModeType</span>.COMMIT  <span class="cm">// flush тільки перед commit</span>
+
+<span class="cm">// AUTO: Hibernate робить flush перед кожним JPQL/HQL запитом</span>
+<span class="cm">// якщо є pending changes для таблиці що запитується</span>
+<span class="ann">@Transactional</span>
+<span class="kw">void</span> example() {
+    order.setStatus(<span class="str">"PAID"</span>);          <span class="cm">// dirty</span>
+    repo.findByStatus(<span class="str">"PAID"</span>);         <span class="cm">// AUTO: flush перед цим запитом!</span>
+    <span class="cm">// інакше findByStatus не побачить наше оновлення</span>
+}
+
+<span class="cm">// Примусовий flush</span>
+em.flush();
+
+<span class="cm">// COMMIT FlushMode — менше SQL, але може не бачити своїх змін</span>
+em.setFlushMode(<span class="cls">FlushModeType</span>.COMMIT);</div>
+        <div class="callout callout-info">
+          <code>FlushMode.AUTO</code> — Hibernate сам вирішує коли flush. Іноді це призводить до несподіваних SQL запитів. <code>show_sql=true</code> допомагає зрозуміти що відбувається.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: detach/clear -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-teal">управління PC</span>
+        <h2>detach і clear</h2>
+        <div class="code"><span class="cm">// detach: Managed → Detached (один entity)</span>
+em.detach(order);
+order.setTotal(newTotal); <span class="cm">// не відслідковується</span>
+
+<span class="cm">// clear: видаляє ВСІ entities з PC</span>
+em.clear();
+<span class="cm">// після clear — всі раніше managed стають detached</span>
+
+<span class="cm">// Типовий use case: batch обробка</span>
+<span class="ann">@Transactional</span>
+<span class="kw">void</span> processBatch(<span class="cls">List</span>&lt;<span class="cls">Long</span>&gt; ids) {
+    <span class="kw">int</span> count = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="kw">long</span> id : ids) {
+        <span class="cls">Order</span> order = em.find(<span class="cls">Order</span>.<span class="kw">class</span>, id);
+        processOrder(order);
+        em.flush();
+        <span class="kw">if</span> (++count % <span class="num">50</span> == <span class="num">0</span>) {
+            em.clear();  <span class="cm">// звільняємо PC, уникаємо OOM</span>
+        }
+    }
+}</div>
+        <div class="callout callout-ok">
+          Без <code>em.clear()</code> при batch обробці — PC накопичує тисячі managed entities. Dirty checking стає O(n) при кожному flush. Пам'ять росте. <code>clear()</code> кожні N записів вирішує це.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: антипатерни -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-red">антипатерни</span>
+        <h2>Типові помилки</h2>
+        <h3>1. Модифікація detached entity без merge</h3>
+        <div class="code"><span class="cm">// ПОГАНО</span>
+<span class="cls">Order</span> order = orderService.findById(id); <span class="cm">// detached поза @Transactional</span>
+order.setStatus(<span class="str">"CANCELLED"</span>);             <span class="cm">// не збережеться!</span>
+<span class="cm">// немає save() → зміна загублена</span>
+
+<span class="cm">// ДОБРЕ: все в одній транзакції</span>
+<span class="ann">@Transactional</span>
+<span class="kw">void</span> cancel(<span class="kw">long</span> id) {
+    <span class="cls">Order</span> order = repo.findById(id).orElseThrow();
+    order.setStatus(<span class="str">"CANCELLED"</span>); <span class="cm">// managed → dirty checking зробить UPDATE</span>
+}</div>
+        <hr class="sep">
+        <h3>2. LazyInitializationException</h3>
+        <div class="code"><span class="cm">// ПОГАНО: доступ до lazy collection поза транзакцією</span>
+<span class="cls">Order</span> order = orderService.findById(id); <span class="cm">// транзакція закрита</span>
+order.getItems().size(); <span class="cm">// LazyInitializationException!</span>
+
+<span class="cm">// Рішення: JOIN FETCH або @Transactional</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> 4 стани entity (transient/managed/detached/removed), PC = L1 cache + identity map, dirty checking без явного save(), merge() повертає новий managed екземпляр, flush vs commit.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

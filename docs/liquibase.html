@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liquibase: міграції, zero-downtime — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--teal);background:var(--teal-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--teal)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-purple{background:var(--purple-bg);color:var(--purple)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Liquibase: міграції, zero-downtime</h1>
+  <span class="header-tag">DB Migrations</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Основи</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Навіщо Liquibase</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Changeset і changelog</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Spring Boot інтеграція</div>
+    <div class="sidebar-section">Практика</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Zero-downtime патерни</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Rename і backfill</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Rollback стратегії</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Команди і антипатерни</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-teal">навіщо</span>
+        <h2>Навіщо Liquibase</h2>
+        <p>Версіонований контроль схеми БД. Як Git для SQL. Дозволяє відтворити точний стан схеми на будь-якому середовищі і відкатитись при помилці.</p>
+        <ul>
+          <li><strong>Відтворюваність</strong> — dev/staging/prod мають однакову схему</li>
+          <li><strong>Аудит</strong> — хто і коли змінив схему</li>
+          <li><strong>Rollback</strong> — можливість відкатити зміни</li>
+          <li><strong>CI/CD</strong> — міграції як частина деплою</li>
+        </ul>
+        <div class="callout callout-warn">
+          <code>spring.jpa.hibernate.ddl-auto=update</code> — зручно для розробки, але <strong>ніколи не використовуй у продакшн</strong>. Hibernate може дропнути колонку або таблицю. Тільки Liquibase або Flyway для продакшн.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Liquibase vs Flyway</h3>
+        <div class="code"><span class="cm">// Liquibase: XML/YAML/JSON/SQL changesets, rollback вбудований</span>
+<span class="cm">// Flyway: тільки SQL файли, простіший, rollback тільки Pro</span>
+<span class="cm">// Spring Boot підтримує обидва</span>
+<span class="cm">// Liquibase — більш гнучкий, Flyway — простіший для початку</span></div>
+      </div>
+    </div>
+
+    <!-- 1: changeset -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-teal">структура</span>
+        <h2>Changeset і changelog</h2>
+        <div class="code"><span class="cm">-- resources/db/changelog/db.changelog-master.yaml</span>
+databaseChangeLog:
+  - includeAll:
+      path: db/changelog/changes/
+
+<span class="cm">-- resources/db/changelog/changes/001-create-orders.yaml</span>
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-orders          <span class="cm"># унікальний ID</span>
+      author: ihor                   <span class="cm"># автор</span>
+      changes:
+        - createTable:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total
+                  type: DECIMAL(19,2)
+      rollback:
+        - dropTable:
+            tableName: orders</div>
+        <div class="callout callout-warn">
+          Changeset — <strong>незмінний після застосування</strong>. Liquibase зберігає MD5 кожного changeset у <code>DATABASECHANGELOG</code>. Якщо змінити застосований changeset — Liquibase кине <code>ValidationFailedException</code>. Нові зміни → новий changeset.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: Spring Boot -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-green">Spring Boot</span>
+        <h2>Spring Boot інтеграція</h2>
+        <div class="code"><span class="cm">// build.gradle</span>
+implementation <span class="str">'org.liquibase:liquibase-core'</span>
+
+<span class="cm">// application.properties</span>
+spring.liquibase.enabled=true
+spring.liquibase.change-log=classpath:db/changelog/db.changelog-master.yaml
+spring.liquibase.default-schema=public
+
+<span class="cm">// Вимкнути для тестів (Testcontainers сам запускає)</span>
+spring.liquibase.enabled=false
+
+<span class="cm">// Або окремий DataSource для міграцій</span>
+spring.liquibase.url=jdbc:postgresql://...
+spring.liquibase.user=migrations_user
+spring.liquibase.password=secret
+
+<span class="cm">// Контексти: різні changesets для різних середовищ</span>
+spring.liquibase.contexts=dev,test</div>
+        <div class="code"><span class="cm">-- SQL формат changeset (альтернатива YAML)</span>
+<span class="cm">--liquibase formatted sql</span>
+<span class="cm">--changeset ihor:002-add-user-id</span>
+ALTER TABLE orders ADD COLUMN user_id BIGINT;
+<span class="cm">--rollback ALTER TABLE orders DROP COLUMN user_id;</span></div>
+      </div>
+    </div>
+
+    <!-- 3: zero-downtime -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-green">zero-downtime</span>
+        <h2>Zero-downtime патерни</h2>
+        <p>При rolling deploy нова і стара версія застосунку можуть працювати одночасно. Міграція має бути сумісна з обома.</p>
+        <h3>Додати нову NOT NULL колонку без downtime</h3>
+        <div class="code"><span class="cm">-- НЕПРАВИЛЬНО: блокує таблицю, стара версія не знає колонки</span>
+ALTER TABLE orders ADD COLUMN priority INT NOT NULL DEFAULT 0;
+
+<span class="cm">-- ПРАВИЛЬНО: 3 деплої</span>
+
+<span class="cm">-- Деплой 1: додаємо nullable (без DEFAULT → зворотньо сумісно)</span>
+ALTER TABLE orders ADD COLUMN priority INT;
+
+<span class="cm">-- Деплой 2: нова версія коду пише priority, бекфіл існуючих</span>
+UPDATE orders SET priority = 0 WHERE priority IS NULL;
+
+<span class="cm">-- Деплой 3: додаємо NOT NULL constraint (дані вже заповнені)</span>
+ALTER TABLE orders ALTER COLUMN priority SET NOT NULL;</div>
+        <div class="callout callout-info">
+          У PostgreSQL <code>ADD COLUMN ... DEFAULT ...</code> з незмінним DEFAULT не блокує з PostgreSQL 11+ (instant). Але при змінному DEFAULT або NOT NULL без DEFAULT — таблиця блокується. Завжди перевіряй версію DB.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: rename/backfill -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-amber">rename</span>
+        <h2>Rename колонки — expand/contract</h2>
+        <p>Перейменування колонки без downtime потребує 4 кроки: нова колонка → синхронізація → переключення коду → видалення старої.</p>
+        <div class="code"><span class="cm">-- Крок 1: додаємо нову колонку (nullable)</span>
+ALTER TABLE users ADD COLUMN full_name VARCHAR(200);
+
+<span class="cm">-- Крок 2: бекфіл існуючих даних</span>
+UPDATE users SET full_name = name WHERE full_name IS NULL;
+
+<span class="cm">-- Крок 2b: тригер для синхронізації під час міграції</span>
+<span class="cm">-- (для великих таблиць що активно пишуться)</span>
+
+<span class="cm">-- Крок 3: новий код пише в обидві колонки</span>
+<span class="cm">-- старий код читає зі старої, новий — з нової</span>
+
+<span class="cm">-- Крок 4: після повного переходу</span>
+ALTER TABLE users DROP COLUMN name;</div>
+        <div class="callout callout-warn">
+          Ніколи не роби <code>RENAME COLUMN</code> в production при rolling deploy — стара версія застосунку одразу зламається. Expand/contract — єдиний безпечний шлях.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: rollback -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-red">rollback</span>
+        <h2>Rollback стратегії</h2>
+        <div class="code"><span class="cm">-- Rollback через Liquibase CLI</span>
+liquibase rollback --tag=v1.0.0
+liquibase rollbackCount 3           <span class="cm">-- відкатити 3 changeset</span>
+liquibase rollbackToDate 2024-01-15
+
+<span class="cm">-- Автоматичний rollback (Liquibase генерує)</span>
+<span class="cm">-- createTable → dropTable</span>
+<span class="cm">-- addColumn  → dropColumn</span>
+<span class="cm">-- createIndex → dropIndex</span>
+
+<span class="cm">-- Ручний rollback (для складних операцій)</span>
+changeSet:
+  id: 003-update-data
+  changes:
+    - update:
+        tableName: orders
+        column:
+          name: status
+          value: ACTIVE
+        where: status = 'NEW'
+  rollback:
+    - update:
+        tableName: orders
+        column:
+          name: status
+          value: NEW
+        where: status = 'ACTIVE'</div>
+        <div class="callout callout-info">
+          <strong>DROP TABLE і DROP COLUMN не мають автоматичного rollback</strong> — дані загублені. Завжди архівуй дані перед drop або роби drop через expand/contract (спочатку перестаємо використовувати, потім видаляємо).
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: commands -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-gray">команди</span>
+        <h2>Команди і антипатерни</h2>
+        <div class="code"><span class="cm">// Maven/Gradle команди</span>
+./gradlew liquibaseUpdate          <span class="cm">// застосувати нові changesets</span>
+./gradlew liquibaseStatus          <span class="cm">// які ще не застосовані</span>
+./gradlew liquibaseValidate        <span class="cm">// перевірити changelog</span>
+./gradlew liquibaseDiff            <span class="cm">// diff між схемою і changelog</span>
+./gradlew liquibaseGenerateChangelog <span class="cm">// генерувати з існуючої схеми</span>
+
+<span class="cm">// Теги для rollback</span>
+./gradlew liquibaseTag -PliquibaseCommandValue=v2.0.0</div>
+        <hr class="sep">
+        <h3>Антипатерни</h3>
+        <ul>
+          <li><strong>Змінювати застосований changeset</strong> — ValidationFailedException при наступному запуску</li>
+          <li><strong>Один великий changelog</strong> — важко знайти зміну, конфлікти при паралельній роботі</li>
+          <li><strong>Пропускати rollback</strong> — при помилці деплою не можна відкатити</li>
+          <li><strong>DDL і DML в одному changeset</strong> — важко rollback, різні timeout-и</li>
+          <li><strong>Логіка в SQL changeset</strong> — PL/pgSQL процедури важко тестувати і дебажити</li>
+        </ul>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> changeset незмінний після застосування, zero-downtime = expand/contract (nullable → backfill → NOT NULL), rollback для структурних змін (не для даних), Liquibase vs Flyway (rollback, формати).
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>
