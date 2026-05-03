@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring Testing: @SpringBootTest, @WebMvcTest, Testcontainers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--green);background:var(--green-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--green)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Spring Testing</h1>
+  <span class="header-tag">Testing</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Піраміда</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Тест-піраміда і стратегія</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Unit tests + Mockito</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>@WebMvcTest</div>
+    <div class="sidebar-section">Інтеграція</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>@SpringBootTest</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Testcontainers</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>@DataJpaTest</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Test slices і WireMock</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-green">стратегія</span>
+        <h2>Тест-піраміда</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Рівень</th><th>Швидкість</th><th>Ізоляція</th><th>Інструменти</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Unit</strong></td><td class="td-good">мс</td><td class="td-good">повна</td><td>JUnit 5, Mockito</td></tr>
+              <tr><td><strong>Integration</strong></td><td class="td-warn">секунди</td><td class="td-warn">часткова</td><td>@WebMvcTest, @DataJpaTest</td></tr>
+              <tr><td><strong>E2E</strong></td><td class="td-bad">хвилини</td><td class="td-bad">без</td><td>@SpringBootTest, Testcontainers</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout-info">
+          <strong>Правило:</strong> багато unit тестів (70%), помірно інтеграційних (20%), мало E2E (10%). Інтеграційні — найціннішіші для confidence, але найдорожчі. Unit — найшвидший feedback loop.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: Unit + Mockito -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-green">unit</span>
+        <h2>Unit tests + Mockito</h2>
+        <div class="code"><span class="ann">@ExtendWith</span>(<span class="cls">MockitoExtension</span>.<span class="kw">class</span>)
+<span class="kw">class</span> <span class="cls">RouteServiceTest</span> {
+
+    <span class="ann">@Mock</span>
+    <span class="cls">RouteRepository</span> repo;
+
+    <span class="ann">@Mock</span>
+    <span class="cls">RoutingStrategy</span> strategy;
+
+    <span class="ann">@InjectMocks</span>
+    <span class="cls">RouteService</span> service;
+
+    <span class="ann">@Test</span>
+    <span class="kw">void</span> optimize_returnsOptimizedRoute() {
+        <span class="cm">// given</span>
+        <span class="kw">var</span> pois = <span class="cls">List</span>.of(<span class="kw">new</span> <span class="cls">Poi</span>(<span class="num">1L</span>), <span class="kw">new</span> <span class="cls">Poi</span>(<span class="num">2L</span>));
+        <span class="cls">Mockito</span>.when(strategy.optimize(pois)).thenReturn(pois);
+
+        <span class="cm">// when</span>
+        <span class="kw">var</span> result = service.optimize(pois);
+
+        <span class="cm">// then</span>
+        <span class="cls">Assertions</span>.assertEquals(<span class="num">2</span>, result.size());
+        <span class="cls">Mockito</span>.verify(strategy).optimize(pois);
+    }
+
+    <span class="ann">@Test</span>
+    <span class="kw">void</span> optimize_emptyList_throwsException() {
+        <span class="cls">Assertions</span>.assertThrows(
+            <span class="cls">IllegalArgumentException</span>.<span class="kw">class</span>,
+            () -> service.optimize(<span class="cls">List</span>.of())
+        );
+    }
+}</code></div>
+        <div class="callout callout-warn">
+          <code>@InjectMocks</code> — Mockito сам вприскує моки. Але якщо сервіс використовує constructor injection (рекомендовано) — <code>@InjectMocks</code> може не спрацювати з деякими версіями. Явний конструктор надійніший: <code>new RouteService(repo, strategy)</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: WebMvcTest -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">slice</span>
+        <h2>@WebMvcTest — тест контролера</h2>
+        <p>Завантажує тільки web layer: контролери, фільтри, конвертори. Сервіси — мокаються. Швидше ніж @SpringBootTest.</p>
+        <div class="code"><span class="ann">@WebMvcTest</span>(<span class="cls">RouteController</span>.<span class="kw">class</span>)
+<span class="kw">class</span> <span class="cls">RouteControllerTest</span> {
+
+    <span class="ann">@Autowired</span>
+    <span class="cls">MockMvc</span> mockMvc;
+
+    <span class="ann">@MockBean</span>              <span class="cm">// mock Spring bean, не Mockito</span>
+    <span class="cls">RouteService</span> service;
+
+    <span class="ann">@Autowired</span>
+    <span class="cls">ObjectMapper</span> mapper;
+
+    <span class="ann">@Test</span>
+    <span class="kw">void</span> createRoute_validRequest_returns201() <span class="kw">throws</span> <span class="cls">Exception</span> {
+        <span class="kw">var</span> request = <span class="kw">new</span> <span class="cls">RouteRequest</span>(<span class="cls">List</span>.of(<span class="num">1L</span>, <span class="num">2L</span>));
+        <span class="kw">var</span> response = <span class="kw">new</span> <span class="cls">RouteDto</span>(<span class="num">42L</span>);
+        <span class="cls">Mockito</span>.when(service.create(request)).thenReturn(response);
+
+        mockMvc.perform(<span class="cls">MockMvcRequestBuilders</span>
+                .post(<span class="str">"/api/routes"</span>)
+                .contentType(<span class="cls">MediaType</span>.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(request)))
+            .andExpect(<span class="cls">MockMvcResultMatchers</span>.status().isCreated())
+            .andExpect(<span class="cls">MockMvcResultMatchers</span>.jsonPath(<span class="str">"$.id"</span>).value(<span class="num">42</span>));
+    }
+}</code></div>
+      </div>
+    </div>
+
+    <!-- 3: SpringBootTest -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-amber">E2E</span>
+        <h2>@SpringBootTest — повний контекст</h2>
+        <div class="code"><span class="ann">@SpringBootTest</span>(webEnvironment = <span class="cls">SpringBootTest</span>.<span class="cls">WebEnvironment</span>.RANDOM_PORT)
+<span class="ann">@ActiveProfiles</span>(<span class="str">"test"</span>)
+<span class="kw">class</span> <span class="cls">RouteApiIntegrationTest</span> {
+
+    <span class="ann">@Autowired</span>
+    <span class="cls">TestRestTemplate</span> restTemplate;
+
+    <span class="ann">@Autowired</span>
+    <span class="cls">RouteRepository</span> repo;
+
+    <span class="ann">@Test</span>
+    <span class="kw">void</span> createAndFetchRoute() {
+        <span class="kw">var</span> request = <span class="kw">new</span> <span class="cls">RouteRequest</span>(<span class="cls">List</span>.of(<span class="num">1L</span>, <span class="num">2L</span>));
+
+        <span class="kw">var</span> created = restTemplate.postForEntity(
+            <span class="str">"/api/routes"</span>, request, <span class="cls">RouteDto</span>.<span class="kw">class</span>);
+
+        <span class="cls">Assertions</span>.assertEquals(<span class="cls">HttpStatus</span>.CREATED, created.getStatusCode());
+        <span class="cls">Assertions</span>.assertTrue(repo.existsById(created.getBody().getId()));
+    }
+}
+
+<span class="cm">// WebEnvironment варіанти:</span>
+<span class="cm">// RANDOM_PORT: реальний embedded server, рандомний порт</span>
+<span class="cm">// DEFINED_PORT: реальний server на server.port</span>
+<span class="cm">// MOCK: MockMvc без реального сервера (default)</span>
+<span class="cm">// NONE: без web layer</span></code></div>
+        <div class="callout callout-warn">
+          @SpringBootTest запускає весь контекст — повільно. Для більшості тестів краще @WebMvcTest або @DataJpaTest. @SpringBootTest — для smoke tests і критичних flow.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: Testcontainers -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-teal">Testcontainers</span>
+        <h2>Testcontainers — реальна DB в тестах</h2>
+        <div class="code"><span class="cm">// build.gradle</span>
+<span class="cm">// testImplementation 'org.springframework.boot:spring-boot-testcontainers'</span>
+<span class="cm">// testImplementation 'org.testcontainers:postgresql'</span>
+
+<span class="ann">@SpringBootTest</span>
+<span class="ann">@Testcontainers</span>
+<span class="kw">class</span> <span class="cls">RepositoryIntegrationTest</span> {
+
+    <span class="ann">@Container</span>
+    <span class="kw">static</span> <span class="cls">PostgreSQLContainer</span>&lt;?&gt; postgres =
+        <span class="kw">new</span> <span class="cls">PostgreSQLContainer</span>&lt;&gt;(<span class="str">"postgres:16-alpine"</span>)
+            .withDatabaseName(<span class="str">"testdb"</span>)
+            .withUsername(<span class="str">"test"</span>)
+            .withPassword(<span class="str">"test"</span>);
+
+    <span class="ann">@DynamicPropertySource</span>
+    <span class="kw">static void</span> props(<span class="cls">DynamicPropertyRegistry</span> r) {
+        r.add(<span class="str">"spring.datasource.url"</span>, postgres::getJdbcUrl);
+        r.add(<span class="str">"spring.datasource.username"</span>, postgres::getUsername);
+        r.add(<span class="str">"spring.datasource.password"</span>, postgres::getPassword);
+    }
+}</code></div>
+        <div class="callout callout-ok">
+          <strong>Spring Boot 3.1+:</strong> <code>@ServiceConnection</code> замінює @DynamicPropertySource — автоматично конфігурує DataSource:
+          <div style="margin-top:.5rem;font-family:var(--font-mono);font-size:12px;color:#c9cdd8">@Container @ServiceConnection<br>static PostgreSQLContainer&lt;?&gt; postgres = new PostgreSQLContainer&lt;&gt;("postgres:16-alpine");</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: DataJpaTest -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-teal">slice</span>
+        <h2>@DataJpaTest — тест репозиторію</h2>
+        <p>Завантажує тільки JPA layer: entities, repositories. Використовує in-memory DB (H2) або Testcontainers. Кожен тест в транзакції — автоматичний rollback.</p>
+        <div class="code"><span class="ann">@DataJpaTest</span>
+<span class="ann">@AutoConfigureTestDatabase</span>(replace = <span class="cls">AutoConfigureTestDatabase</span>.<span class="cls">Replace</span>.NONE)
+<span class="ann">@Testcontainers</span>
+<span class="kw">class</span> <span class="cls">RouteRepositoryTest</span> {
+
+    <span class="ann">@Container</span> <span class="ann">@ServiceConnection</span>
+    <span class="kw">static</span> <span class="cls">PostgreSQLContainer</span>&lt;?&gt; pg =
+        <span class="kw">new</span> <span class="cls">PostgreSQLContainer</span>&lt;&gt;(<span class="str">"postgres:16-alpine"</span>);
+
+    <span class="ann">@Autowired</span>
+    <span class="cls">RouteRepository</span> repo;
+
+    <span class="ann">@Autowired</span>
+    <span class="cls">TestEntityManager</span> em;
+
+    <span class="ann">@Test</span>
+    <span class="kw">void</span> findByUserId_returnsOnlyUserRoutes() {
+        em.persist(<span class="kw">new</span> <span class="cls">Route</span>(<span class="num">1L</span>, <span class="str">"Kyiv tour"</span>));
+        em.persist(<span class="kw">new</span> <span class="cls">Route</span>(<span class="num">2L</span>, <span class="str">"Lviv tour"</span>));
+        em.flush();
+
+        <span class="kw">var</span> result = repo.findByUserId(<span class="num">1L</span>);
+
+        <span class="cls">Assertions</span>.assertEquals(<span class="num">1</span>, result.size());
+        <span class="cls">Assertions</span>.assertEquals(<span class="str">"Kyiv tour"</span>, result.get(<span class="num">0</span>).getName());
+    }
+}</code></div>
+        <div class="callout callout-warn">
+          <code>Replace.NONE</code> — використовувати реальну DB (Testcontainers) замість H2. Рекомендую завжди — H2 має інший SQL діалект і не перевірить PostgreSQL-специфічні запити.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: slices + WireMock -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-blue">slices</span>
+        <h2>Test slices і WireMock</h2>
+        <h3>Всі test slices</h3>
+        <div class="code"><span class="ann">@WebMvcTest</span>       <span class="cm">// Controllers, MockMvc</span>
+<span class="ann">@DataJpaTest</span>       <span class="cm">// JPA entities, repositories</span>
+<span class="ann">@DataRedisTest</span>     <span class="cm">// Redis layer</span>
+<span class="ann">@DataMongoTest</span>     <span class="cm">// MongoDB layer</span>
+<span class="ann">@JsonTest</span>          <span class="cm">// Jackson serialization</span>
+<span class="ann">@RestClientTest</span>    <span class="cm">// RestTemplate / RestClient</span></code></div>
+        <hr class="sep">
+        <h3>WireMock — mock зовнішніх HTTP сервісів</h3>
+        <div class="code"><span class="cm">// testImplementation 'org.wiremock.integrations:wiremock-spring-boot'</span>
+
+<span class="ann">@SpringBootTest</span>
+<span class="ann">@EnableWireMock</span>
+<span class="kw">class</span> <span class="cls">ExternalApiTest</span> {
+
+    <span class="ann">@InjectWireMock</span>
+    <span class="cls">WireMockServer</span> wireMock;
+
+    <span class="ann">@Test</span>
+    <span class="kw">void</span> fetchPoi_returnsData() {
+        wireMock.stubFor(
+            <span class="cls">WireMock</span>.get(<span class="str">"/pois/1"</span>)
+                .willReturn(<span class="cls">WireMock</span>.okJson(<span class="str">"""
+                    {"id": 1, "name": "Museum"}
+                    """</span>))
+        );
+
+        <span class="kw">var</span> poi = poiClient.fetchById(<span class="num">1L</span>);
+        <span class="cls">Assertions</span>.assertEquals(<span class="str">"Museum"</span>, poi.getName());
+    }
+}</code></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> піраміда (unit > integration > E2E), @WebMvcTest = web slice + @MockBean, @DataJpaTest = JPA slice + rollback, Testcontainers = реальна DB, WireMock для HTTP залежностей, Replace.NONE завжди для PostgreSQL.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

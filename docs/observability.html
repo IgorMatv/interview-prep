@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Observability: metrics, traces, logging</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--teal);background:var(--teal-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--teal)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Observability: metrics, traces, logging</h1>
+  <span class="header-tag">Observability</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Three pillars</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Три стовпи observability</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Metrics (Micrometer + Prometheus)</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Distributed Tracing (OpenTelemetry)</div>
+    <div class="sidebar-section">Logging</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Structured logging</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Correlation ID і MDC</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Log рівні і best practices</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Alerting і Grafana</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-teal">три стовпи</span>
+        <h2>Три стовпи Observability</h2>
+        <ul>
+          <li><strong>Metrics</strong> — агреговані числові дані в часі. "Скільки запитів/сек?", "p99 latency?". Prometheus → Grafana.</li>
+          <li><strong>Traces</strong> — шлях одного запиту через систему. "Де саме повільно?". OpenTelemetry → Jaeger/Zipkin/Tempo.</li>
+          <li><strong>Logs</strong> — детальні текстові події. "Що саме сталось?". Logback → ELK/Loki.</li>
+        </ul>
+        <div class="callout callout-info">
+          <strong>Тріада в дії:</strong> Alert по metric (error rate підвищився) → знайти проблемний trace → прочитати logs того request'у. Кожен стовп доповнює інші.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Стек для Spring Boot</h3>
+        <div class="code"><span class="cm">// Metrics: Micrometer → Prometheus → Grafana</span>
+<span class="cm">// Traces: Spring Boot Actuator + Micrometer Tracing → Jaeger</span>
+<span class="cm">// Logs: Logback + Logstash encoder → ELK або Loki</span>
+
+<span class="cm">// Мінімальні залежності</span>
+<span class="cm">// implementation 'org.springframework.boot:spring-boot-starter-actuator'</span>
+<span class="cm">// implementation 'io.micrometer:micrometer-registry-prometheus'</span>
+<span class="cm">// implementation 'io.micrometer:micrometer-tracing-bridge-otel'</span>
+<span class="cm">// implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'</span></code></div>
+      </div>
+    </div>
+
+    <!-- 1: metrics -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-teal">metrics</span>
+        <h2>Metrics — Micrometer + Prometheus</h2>
+        <div class="code"><span class="cm">// application.properties</span>
+management.endpoints.web.exposure.include=prometheus,health,info,metrics
+management.metrics.export.prometheus.enabled=true
+
+<span class="cm">// Типи метрик:</span>
+<span class="cm">// Counter: тільки зростає (кількість запитів, помилок)</span>
+<span class="cm">// Gauge: поточне значення (активні з'єднання, queue size)</span>
+<span class="cm">// Timer: тривалість + кількість (latency histogram)</span>
+<span class="cm">// DistributionSummary: розподіл значень (request size)</span></code></div>
+        <div class="code"><span class="cm">// Кастомні метрики</span>
+<span class="ann">@Autowired</span> <span class="cls">MeterRegistry</span> registry;
+
+<span class="cm">// Counter</span>
+<span class="cls">Counter</span> routesCreated = <span class="cls">Counter</span>.builder(<span class="str">"routes.created"</span>)
+    .tag(<span class="str">"status"</span>, <span class="str">"success"</span>)
+    .register(registry);
+routesCreated.increment();
+
+<span class="cm">// Timer</span>
+<span class="cls">Timer</span> optimizationTime = <span class="cls">Timer</span>.builder(<span class="str">"route.optimization.duration"</span>)
+    .register(registry);
+optimizationTime.record(() -> optimizer.optimize(stops));
+
+<span class="cm">// Gauge для queue size</span>
+<span class="cls">Gauge</span>.builder(<span class="str">"queue.size"</span>, pendingQueue, <span class="cls">Queue</span>::size)
+    .register(registry);</code></div>
+      </div>
+    </div>
+
+    <!-- 2: tracing -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-blue">tracing</span>
+        <h2>Distributed Tracing (OpenTelemetry)</h2>
+        <p>Trace = дерево spans. Span = одна операція з часом початку/кінця, атрибутами. TraceId — єдиний для всього запиту через усі сервіси.</p>
+        <div class="code"><span class="cm">// Автоматична інструментація (Spring Boot Actuator)</span>
+<span class="cm">// HTTP requests, DB queries, Kafka — автоматично</span>
+
+<span class="cm">// Кастомний span</span>
+<span class="ann">@Autowired</span> <span class="cls">Tracer</span> tracer;
+
+<span class="cls">Span</span> span = tracer.nextSpan().name(<span class="str">"route-optimization"</span>).start();
+<span class="kw">try</span> (<span class="kw">var</span> scope = tracer.withSpan(span)) {
+    span.tag(<span class="str">"stops.count"</span>, stops.size());
+    <span class="kw">var</span> result = optimizer.optimize(stops);
+    span.tag(<span class="str">"algorithm"</span>, <span class="str">"two-opt"</span>);
+    <span class="kw">return</span> result;
+} <span class="kw">catch</span> (<span class="cls">Exception</span> e) {
+    span.error(e);
+    <span class="kw">throw</span> e;
+} <span class="kw">finally</span> {
+    span.end();
+}
+
+<span class="cm">// application.properties</span>
+management.tracing.sampling.probability=1.0  <span class="cm">// 100% sampling (dev)</span>
+management.tracing.sampling.probability=0.1  <span class="cm">// 10% sampling (prod)</span></code></div>
+      </div>
+    </div>
+
+    <!-- 3: structured logging -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-green">logging</span>
+        <h2>Structured logging</h2>
+        <p>JSON логи замість plain text. Кожне поле — окремий ключ. Дозволяє ефективний пошук і фільтрацію в ELK/Loki.</p>
+        <div class="code"><span class="cm">// Поганий лог (plain text):</span>
+<span class="cm">// 2024-01-15 10:23:45 ERROR RouteService - Failed to create route for user 42</span>
+<span class="cm">// Важко фільтрувати за userId</span>
+
+<span class="cm">// Добрий лог (structured JSON):</span>
+{
+  "timestamp": "2024-01-15T10:23:45Z",
+  "level": "ERROR",
+  "logger": "com.example.RouteService",
+  "message": "Failed to create route",
+  "userId": 42,
+  "requestId": "550e8400-...",
+  "traceId": "abc123",
+  "spanId": "def456",
+  "exception": "IllegalStateException: No available pois"
+}
+
+<span class="cm">// Logback + logstash-logback-encoder</span>
+<span class="cm">// logback-spring.xml:</span>
+&lt;appender name="JSON" class="ch.qos.logback.core.ConsoleAppender"&gt;
+    &lt;encoder class="net.logstash.logback.encoder.LogstashEncoder"/&gt;
+&lt;/appender&gt;</code></div>
+        <div class="callout callout-info">
+          Spring Boot 3.4+ підтримує structured logging нативно через <code>logging.structured.format.console=ecs</code> — без додаткових залежностей.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: MDC -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-green">MDC</span>
+        <h2>Correlation ID і MDC</h2>
+        <p>MDC (Mapped Diagnostic Context) — thread-local map для додавання контексту до всіх логів у рамках запиту.</p>
+        <div class="code"><span class="cm">// Filter: додаємо requestId до MDC на початку запиту</span>
+<span class="ann">@Component</span>
+<span class="kw">public class</span> <span class="cls">RequestIdFilter</span> <span class="kw">extends</span> <span class="cls">OncePerRequestFilter</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">protected void</span> doFilterInternal(<span class="cls">HttpServletRequest</span> req,
+            <span class="cls">HttpServletResponse</span> res, <span class="cls">FilterChain</span> chain)
+            <span class="kw">throws</span> <span class="cls">ServletException</span>, <span class="cls">IOException</span> {
+        <span class="kw">try</span> {
+            <span class="cls">String</span> requestId = req.getHeader(<span class="str">"X-Request-Id"</span>);
+            <span class="kw">if</span> (requestId == <span class="kw">null</span>) requestId = <span class="cls">UUID</span>.randomUUID().toString();
+            <span class="cls">MDC</span>.put(<span class="str">"requestId"</span>, requestId);
+            <span class="cls">MDC</span>.put(<span class="str">"userId"</span>, extractUserId(req));
+            res.setHeader(<span class="str">"X-Request-Id"</span>, requestId);
+            chain.doFilter(req, res);
+        } <span class="kw">finally</span> {
+            <span class="cls">MDC</span>.clear(); <span class="cm">// ВАЖЛИВО: очистити перед поверненням в пул</span>
+        }
+    }
+}
+
+<span class="cm">// Тепер КОЖЕН лог в рамках запиту автоматично містить requestId:</span>
+<span class="cm">// {"requestId":"abc123","userId":"42","message":"Route created"}</span></code></div>
+        <div class="callout callout-warn">
+          <code>MDC.clear()</code> у finally — обов'язково. При thread pool без clear — наступна задача успадкує MDC попередньої.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: log levels -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-green">best practices</span>
+        <h2>Log рівні і best practices</h2>
+        <div class="code"><span class="cm">// Рівні — що куди</span>
+<span class="cm">// ERROR: помилка що вимагає негайної уваги</span>
+log.error(<span class="str">"Payment failed for order {}: {}"</span>, orderId, ex.getMessage(), ex);
+
+<span class="cm">// WARN: щось підозріле, але сервіс продовжує</span>
+log.warn(<span class="str">"Slow query detected: {}ms for {}"</span>, duration, query);
+
+<span class="cm">// INFO: важлива бізнес-подія</span>
+log.info(<span class="str">"Route {} created for user {}"</span>, routeId, userId);
+
+<span class="cm">// DEBUG: детально для розробки</span>
+log.debug(<span class="str">"Optimization step {}: {} stops"</span>, step, stops.size());
+
+<span class="cm">// TRACE: найдетальніше (майже не використовується в prod)</span>
+log.trace(<span class="str">"Processing stop: {}"</span>, stop);
+
+<span class="cm">// application.properties</span>
+logging.level.root=INFO
+logging.level.com.example=DEBUG     <span class="cm">// наш код — більше деталей</span>
+logging.level.org.hibernate.SQL=DEBUG  <span class="cm">// SQL логування</span></code></div>
+        <ul>
+          <li>Ніколи не логуй паролі, токени, PAN (credit cards), PII у plain text</li>
+          <li>Структуровані поля замість конкатенації рядків</li>
+          <li>Exception завжди передавай останнім параметром (буде stack trace)</li>
+          <li>INFO для бізнес-логіки, DEBUG для технічних деталей</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 6: alerting -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-amber">alerting</span>
+        <h2>Alerting і Grafana</h2>
+        <div class="code"><span class="cm">// Ключові метрики для alerting (Spring Boot)</span>
+
+<span class="cm">// Error rate</span>
+rate(http_server_requests_seconds_count{status=~"5.."}[5m])
+/ rate(http_server_requests_seconds_count[5m]) > 0.01
+<span class="cm">// Alert якщо > 1% 5xx за 5 хвилин</span>
+
+<span class="cm">// p99 latency</span>
+histogram_quantile(0.99,
+  rate(http_server_requests_seconds_bucket[5m])
+) > 1.0
+<span class="cm">// Alert якщо p99 > 1 секунда</span>
+
+<span class="cm">// Connection pool exhausted</span>
+hikaricp_connections_pending > 0
+<span class="cm">// Alert якщо є потоки що чекають на з'єднання</span>
+
+<span class="cm">// Heap usage</span>
+jvm_memory_used_bytes{area="heap"}
+/ jvm_memory_max_bytes{area="heap"} > 0.85
+<span class="cm">// Alert якщо heap > 85%</span></code></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> три стовпи (metrics/traces/logs), Micrometer = vendor-neutral metrics facade (як SLF4J для логів), traceId через усі сервіси для кореляції, structured logging + MDC для context, не логуй sensitive data, p99 важливіший за average.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

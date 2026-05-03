@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Database per service, CQRS, Event Sourcing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--amber);background:var(--amber-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--amber)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Database per service, CQRS, Event Sourcing</h1>
+  <span class="header-tag">System Design</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Data patterns</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Database per service</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Shared database антипатерн</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>CQRS</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>CQRS + Event Sourcing</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Event Sourcing переваги і ціна</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Read model і проекції</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Коли що застосовувати</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-amber">патерн</span>
+        <h2>Database per service</h2>
+        <p>Кожен мікросервіс має власну БД. Інші сервіси не можуть звертатись напряму до чужої БД — тільки через API.</p>
+        <ul>
+          <li><strong>Loose coupling</strong> — можна змінити схему без впливу на інші сервіси</li>
+          <li><strong>Technology choice</strong> — OrderService → PostgreSQL, SearchService → Elasticsearch, UserService → MongoDB</li>
+          <li><strong>Failure isolation</strong> — падіння DB одного сервісу не блокує інші</li>
+          <li><strong>Independent scaling</strong> — масштабуємо тільки той сервіс що потрібно</li>
+        </ul>
+        <div class="code"><span class="cm">// OrderService:     orders DB (PostgreSQL)</span>
+<span class="cm">// PaymentService:   payments DB (PostgreSQL)</span>
+<span class="cm">// SearchService:    elasticsearch</span>
+<span class="cm">// SessionService:   Redis</span>
+<span class="cm">// NotificationService: MongoDB (flexible schema)</span>
+
+<span class="cm">// Join між сервісами = API call або event-driven sync</span>
+<span class="cm">// "Дай мені дані замовлення + дані користувача" →</span>
+<span class="cm">// API Composition або CQRS read model</span></code></div>
+      </div>
+    </div>
+
+    <!-- 1: shared DB -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-red">антипатерн</span>
+        <h2>Shared database — чому не варто</h2>
+        <p>Кілька сервісів в одній БД — типовий антипатерн при переході до мікросервісів.</p>
+        <div class="code"><span class="cm">// Проблеми shared DB:</span>
+<span class="cm">// 1. Runtime coupling: OrderService читає таблицю users напряму</span>
+<span class="cm">//    → UserService не може змінити схему без координації</span>
+<span class="cm">//</span>
+<span class="cm">// 2. Scaling: все масштабується разом</span>
+<span class="cm">//    → не можна масштабувати тільки один сервіс</span>
+<span class="cm">//</span>
+<span class="cm">// 3. Технологічна прив'язка:</span>
+<span class="cm">//    → всі сервіси мусять використовувати ту саму DB</span>
+<span class="cm">//</span>
+<span class="cm">// 4. Відсутність ізоляції:</span>
+<span class="cm">//    → довгий запит в одному сервісі блокує інший</span></code></div>
+        <div class="callout callout-warn">
+          При першому переході до мікросервісів прийнятно тимчасово мати shared DB. Але це технічний борг — eventual goal: database per service.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: CQRS -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">CQRS</span>
+        <h2>CQRS — Command Query Responsibility Segregation</h2>
+        <p>Розділення моделей для читання і запису. Write side (Command) оптимізований для транзакцій. Read side (Query) оптимізований для запитів.</p>
+        <div class="code"><span class="cm">// Write side: нормалізована DB, строга consistency</span>
+<span class="cm">// POST /orders → OrderCommand → PostgreSQL (normalized)</span>
+
+<span class="cm">// Read side: денормалізована view, оптимізована для запитів</span>
+<span class="cm">// GET /orders?userId=1 → OrderQuery → ElasticSearch / Redis</span>
+<span class="cm">//                                   або denormalized PostgreSQL table</span>
+
+<span class="cm">// Синхронізація write → read через events</span>
+<span class="cm">// OrderCreated → update read model</span>
+<span class="cm">// OrderUpdated → update read model</span>
+
+<span class="cm">// Без повного CQRS: просто різні моделі в одному сервісі</span>
+<span class="cm">// CommandModel: Order entity для транзакцій</span>
+<span class="cm">// QueryModel:   OrderSummaryDto для читання (SELECT з JOIN)</span></code></div>
+        <div class="callout callout-info">
+          <strong>CQRS не обов'язково означає 2 DB.</strong> Простий варіант: різні моделі в одному сервісі (write entity, read DTO). Повний CQRS з окремими DB — тільки коли є чітка потреба в різному масштабуванні.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: Event Sourcing -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-purple">Event Sourcing</span>
+        <h2>Event Sourcing</h2>
+        <p>Замість зберігання поточного стану — зберігаємо послідовність подій. Стан = результат replay всіх подій. Незмінна, append-only история.</p>
+        <div class="code"><span class="cm">// Традиційний підхід: зберігаємо стан</span>
+orders table: {id, status="PAID", total=100}
+<span class="cm">// Як дійшли до PAID? Невідомо.</span>
+
+<span class="cm">// Event Sourcing: зберігаємо події</span>
+order_events:
+  {orderId=1, type="OrderCreated",  data={total:100}, ts=10:00}
+  {orderId=1, type="PaymentMade",   data={amount:100}, ts=10:01}
+  {orderId=1, type="OrderShipped",  data={courier:DHL}, ts=10:05}
+
+<span class="cm">// Поточний стан = apply всіх подій</span>
+<span class="cls">Order</span> order = events.stream()
+    .reduce(<span class="kw">new</span> <span class="cls">Order</span>(), <span class="cls">Order</span>::apply);</code></div>
+      </div>
+    </div>
+
+    <!-- 4: ES переваги/ціна -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-purple">Event Sourcing</span>
+        <h2>Переваги і ціна Event Sourcing</h2>
+        <ul>
+          <li><strong>Повна аудит-трасса</strong> — кожна зміна, хто і коли</li>
+          <li><strong>Time travel</strong> — стан системи в будь-який момент</li>
+          <li><strong>Debug</strong> — replay подій → відтворити будь-який стан</li>
+          <li><strong>Projections</strong> — нові read моделі з існуючих подій</li>
+          <li><strong>Природній Kafka/messaging</strong> — події готові до публікації</li>
+        </ul>
+        <hr class="sep">
+        <ul>
+          <li><strong>Складність</strong> — значно складніший ніж традиційний CRUD</li>
+          <li><strong>Eventual read</strong> — read model може бути застарілою</li>
+          <li><strong>Schema evolution</strong> — зміна формату старих подій складна</li>
+          <li><strong>Snapshots потрібні</strong> — при тисячах подій replay стає повільним</li>
+          <li><strong>GDPR проблема</strong> — "право на забуття" складне при immutable log</li>
+        </ul>
+        <div class="callout callout-warn">
+          Event Sourcing — не срібна куля. Підходить для: фінансові транзакції, аудит, складна бізнес-логіка з багатьма станами. Не підходить для: простий CRUD, коли аудит не потрібен.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: projections -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-green">проекції</span>
+        <h2>Read model і проекції</h2>
+        <p>Проекція — read model побудована з events. Можна мати кілька проекцій з одного event store для різних потреб.</p>
+        <div class="code"><span class="cm">// Event store → кілька проекцій</span>
+<span class="cm">// OrderEvents →</span>
+<span class="cm">//   OrderListView (PostgreSQL): id, status, total — для списку</span>
+<span class="cm">//   OrderDetailView (MongoDB): повні деталі — для сторінки</span>
+<span class="cm">//   OrderAnalytics (Elasticsearch): для пошуку і звітів</span>
+
+<span class="cm">// Проекція в Java (спрощено)</span>
+<span class="ann">@EventHandler</span>
+<span class="kw">void</span> on(<span class="cls">OrderCreatedEvent</span> event) {
+    orderViewRepo.save(<span class="kw">new</span> <span class="cls">OrderView</span>(event.getId(), <span class="str">"CREATED"</span>));
+}
+
+<span class="ann">@EventHandler</span>
+<span class="kw">void</span> on(<span class="cls">PaymentMadeEvent</span> event) {
+    orderViewRepo.findById(event.getOrderId())
+        .ifPresent(v -> { v.setStatus(<span class="str">"PAID"</span>); orderViewRepo.save(v); });
+}
+
+<span class="cm">// Rebuild projection: replay всіх подій з початку</span>
+<span class="cm">// Нова проекція = replay → побудувати з нуля</span></code></div>
+      </div>
+    </div>
+
+    <!-- 6: коли що -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-gray">вибір</span>
+        <h2>Коли що застосовувати</h2>
+        <div class="code"><span class="cm">// CQRS без Event Sourcing — найчастіший варіант</span>
+<span class="cm">// Коли: read/write навантаження сильно різне</span>
+<span class="cm">// Коли: read потребує складних JOIN або іншої DB</span>
+<span class="cm">// Коли: потрібен окремий search (Elasticsearch)</span>
+
+<span class="cm">// Event Sourcing — складна бізнес-логіка</span>
+<span class="cm">// Коли: потрібна повна аудит-трасса (banking, fintech)</span>
+<span class="cm">// Коли: багато станів і переходів між ними</span>
+<span class="cm">// Коли: потрібна можливість replay і time travel</span>
+
+<span class="cm">// Просто CRUD — більшість сервісів</span>
+<span class="cm">// Коли: CRUD достатній, немає складної бізнес-логіки</span>
+<span class="cm">// Коли: аудит можна додати через @CreatedDate/@ModifiedDate</span></code></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> Database per service = loose coupling + technology freedom, CQRS = різні моделі читання і запису (не обов'язково 2 DB), Event Sourcing = append-only log подій як source of truth, projections = read models з подій. ES ускладнює — тільки при чіткій потребі.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мікросервіси: Saga, Outbox, Circuit Breaker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--amber);background:var(--amber-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--amber)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-purple{background:var(--purple-bg);color:var(--purple)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout-red{background:var(--red-bg);border-left:3px solid var(--red);color:#c85a5a}
+.callout strong{color:inherit}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Мікросервіси: Saga, Outbox, Circuit Breaker</h1>
+  <span class="header-tag">System Design</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Транзакції</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Distributed transactions проблема</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Saga патерн</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Outbox патерн</div>
+    <div class="sidebar-section">Resilience</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Circuit Breaker</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Retry і Bulkhead</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Resilience4j в Spring</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Service Discovery</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-red">проблема</span>
+        <h2>Distributed transactions проблема</h2>
+        <p>В мікросервісах кожен сервіс має свою БД. Немає глобального ACID. 2PC (two-phase commit) — теоретично вирішує, але на практиці крихкий і повільний.</p>
+        <div class="code"><span class="cm">// Класична проблема: оформлення замовлення</span>
+<span class="cm">// OrderService.createOrder()  → INSERT order (success)</span>
+<span class="cm">// PaymentService.charge()     → charge card (success)</span>
+<span class="cm">// InventoryService.reserve()  → reserve items (FAIL!)</span>
+<span class="cm">// Що тепер? Order і Payment вже записані...</span>
+
+<span class="cm">// 2PC проблема:</span>
+<span class="cm">// Coordinator SPOF (single point of failure)</span>
+<span class="cm">// При падінні coordinator → всі учасники заблоковані</span>
+<span class="cm">// Несумісний з BASE (поки обидва учасники в prepare state)</span></code></div>
+        <div class="callout callout-info">
+          Сучасний підхід: <strong>Saga</strong> для розподіленої "транзакції" і <strong>Outbox</strong> для надійної публікації подій. 2PC — уникати.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: Saga -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-amber">Saga</span>
+        <h2>Saga патерн</h2>
+        <p>Послідовність локальних транзакцій. При невдачі — компенсаційні транзакції відміняють попередні кроки. Два варіанти: Choreography і Orchestration.</p>
+        <h3>Choreography — через события</h3>
+        <div class="code"><span class="cm">// OrderService: CREATE order → publish OrderCreated</span>
+<span class="cm">// PaymentService: listens OrderCreated → charge → publish PaymentDone</span>
+<span class="cm">// InventoryService: listens PaymentDone → reserve → publish Reserved</span>
+<span class="cm">//</span>
+<span class="cm">// При невдачі:</span>
+<span class="cm">// InventoryService: publish ReservationFailed</span>
+<span class="cm">// PaymentService: listens ReservationFailed → refund → publish Refunded</span>
+<span class="cm">// OrderService: listens Refunded → cancel order</span></code></div>
+        <hr class="sep">
+        <h3>Orchestration — через оркестратор</h3>
+        <div class="code"><span class="cm">// SagaOrchestrator знає всі кроки і координує</span>
+<span class="cls">OrderSagaOrchestrator</span>:
+  step1: paymentService.charge()
+    on_failure: → rollback (нема попередніх кроків)
+  step2: inventoryService.reserve()
+    on_failure: paymentService.refund() → rollback
+
+<span class="cm">// Orchestration: ясніша логіка, але SPOF orchestrator</span>
+<span class="cm">// Choreography: слабка зв'язність, але важко відстежити flow</span></code></div>
+      </div>
+    </div>
+
+    <!-- 2: Outbox -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-amber">Outbox</span>
+        <h2>Outbox патерн</h2>
+        <p>Надійна публікація подій: пишемо в DB і Kafka атомарно. Без Outbox — між persist і publish може бути збій → подія загублена.</p>
+        <div class="code"><span class="cm">// Проблема без Outbox:</span>
+<span class="ann">@Transactional</span>
+<span class="kw">void</span> createOrder(<span class="cls">Order</span> order) {
+    orderRepo.save(order);       <span class="cm">// success</span>
+    kafkaTemplate.send(event);   <span class="cm">// FAIL тут → order saved, event lost!</span>
+}
+
+<span class="cm">// Outbox рішення:</span>
+<span class="ann">@Transactional</span>
+<span class="kw">void</span> createOrder(<span class="cls">Order</span> order) {
+    orderRepo.save(order);
+    outboxRepo.save(<span class="kw">new</span> <span class="cls">OutboxEvent</span>(<span class="str">"OrderCreated"</span>, order.getId()));
+    <span class="cm">// обидва в одній транзакції → атомарно</span>
+}
+
+<span class="cm">// Окремий поллер (або CDC) читає outbox і публікує в Kafka</span>
+<span class="ann">@Scheduled</span>(fixedDelay = <span class="num">1000</span>)
+<span class="kw">void</span> publishPendingEvents() {
+    outboxRepo.findUnpublished()
+        .forEach(e -> {
+            kafkaTemplate.send(e.getTopic(), e.getPayload());
+            e.markPublished();
+        });
+}</code></div>
+        <div class="callout callout-ok">
+          <strong>Debezium (CDC)</strong> — читає WAL (Write-Ahead Log) PostgreSQL і публікує зміни в Kafka. Без поллера, мінімальна затримка, production-ready.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: Circuit Breaker -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-red">Circuit Breaker</span>
+        <h2>Circuit Breaker</h2>
+        <p>Якщо залежний сервіс повільний або падає — Circuit Breaker відкривається і запити не йдуть до нього. Після таймауту — пробний запит.</p>
+        <div class="code"><span class="cm">// 3 стани:</span>
+<span class="cm">// CLOSED: нормальна робота, запити проходять</span>
+<span class="cm">// OPEN: CB відкритий, запити відхиляються одразу (fallback)</span>
+<span class="cm">// HALF-OPEN: один пробний запит, якщо success → CLOSED</span>
+
+<span class="cm">// CLOSED → OPEN: failure rate > threshold (50%)</span>
+<span class="cm">// OPEN → HALF-OPEN: після wait duration (60s)</span>
+<span class="cm">// HALF-OPEN → CLOSED: пробний запит успішний</span>
+<span class="cm">// HALF-OPEN → OPEN: пробний запит невдалий</span></code></div>
+        <div class="callout callout-warn">
+          Без Circuit Breaker: повільний сервіс → накопичення threads що чекають → thread pool exhaustion → наш сервіс теж падає. Це <strong>cascading failure</strong>. CB ізолює проблему.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: retry/bulkhead -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-teal">resilience</span>
+        <h2>Retry і Bulkhead</h2>
+        <h3>Retry з exponential backoff</h3>
+        <div class="code"><span class="cm">// Без jitter: всі retries одночасно → thundering herd</span>
+<span class="cm">// З jitter: random delay → розподілене навантаження</span>
+delay = min(cap, base * 2^attempt) + random_jitter
+
+<span class="cm">// Коли retry допомагає:</span>
+<span class="cm">// - Network blip (transient errors)</span>
+<span class="cm">// - 429 Too Many Requests (rate limited)</span>
+<span class="cm">// - 503 Service Unavailable</span>
+<span class="cm">//</span>
+<span class="cm">// Коли retry шкодить:</span>
+<span class="cm">// - Non-idempotent operations без idempotency key</span>
+<span class="cm">// - 4xx client errors (400, 401, 404)</span>
+<span class="cm">// - При circuit breaker OPEN</span></code></div>
+        <hr class="sep">
+        <h3>Bulkhead — ізоляція ресурсів</h3>
+        <div class="code"><span class="cm">// Окремий thread pool для кожного залежного сервісу</span>
+<span class="cm">// Payment service pool: 10 threads</span>
+<span class="cm">// Inventory service pool: 10 threads</span>
+<span class="cm">//</span>
+<span class="cm">// Якщо Inventory зависне → тільки його 10 threads зайняті</span>
+<span class="cm">// Payment продовжує працювати в своєму pool</span>
+<span class="cm">// Без bulkhead → один повільний сервіс вичерпує всі threads</span></code></div>
+      </div>
+    </div>
+
+    <!-- 5: Resilience4j -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-green">Resilience4j</span>
+        <h2>Resilience4j в Spring Boot</h2>
+        <div class="code"><span class="cm">// application.properties</span>
+resilience4j.circuitbreaker.instances.paymentService.failure-rate-threshold=50
+resilience4j.circuitbreaker.instances.paymentService.wait-duration-in-open-state=60s
+resilience4j.circuitbreaker.instances.paymentService.sliding-window-size=10
+
+resilience4j.retry.instances.paymentService.max-attempts=3
+resilience4j.retry.instances.paymentService.wait-duration=500ms
+resilience4j.retry.instances.paymentService.exponential-backoff-multiplier=2</code></div>
+        <div class="code"><span class="cm">// Використання</span>
+<span class="ann">@CircuitBreaker</span>(name = <span class="str">"paymentService"</span>, fallbackMethod = <span class="str">"fallbackCharge"</span>)
+<span class="ann">@Retry</span>(name = <span class="str">"paymentService"</span>)
+<span class="kw">public</span> <span class="cls">PaymentResult</span> charge(<span class="cls">PaymentRequest</span> req) {
+    <span class="kw">return</span> paymentClient.charge(req);
+}
+
+<span class="kw">private</span> <span class="cls">PaymentResult</span> fallbackCharge(<span class="cls">PaymentRequest</span> req, <span class="cls">Exception</span> ex) {
+    log.warn(<span class="str">"Payment service unavailable, queuing"</span>, ex);
+    pendingQueue.enqueue(req);
+    <span class="kw">return</span> <span class="cls">PaymentResult</span>.pending();
+}</code></div>
+      </div>
+    </div>
+
+    <!-- 6: Service Discovery -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-blue">service discovery</span>
+        <h2>Service Discovery</h2>
+        <p>В мікросервісах адреси сервісів динамічні (контейнери). Service Discovery дозволяє знайти сервіс за іменем без hardcoded IP.</p>
+        <div class="code"><span class="cm">// Client-side discovery (Eureka, Consul):</span>
+<span class="cm">// 1. Сервіс реєструється в registry при старті</span>
+<span class="cm">// 2. Клієнт питає registry: "де payment-service?"</span>
+<span class="cm">// 3. Registry повертає список інстансів</span>
+<span class="cm">// 4. Клієнт сам балансує (Ribbon/LoadBalancer)</span>
+
+<span class="cm">// Server-side discovery (Kubernetes):</span>
+<span class="cm">// 1. kube-proxy, DNS або Ingress router балансує</span>
+<span class="cm">// 2. Клієнт просто: http://payment-service/charge</span>
+<span class="cm">// 3. K8s Service → знаходить pods за label selector</span>
+
+<span class="cm">// Spring Cloud LoadBalancer (Spring Boot 3):</span>
+<span class="ann">@LoadBalanced</span>
+<span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">RestTemplate</span> restTemplate() { <span class="kw">return new</span> <span class="cls">RestTemplate</span>(); }
+<span class="cm">// "http://payment-service/charge" → resolve через discovery</span></code></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> Saga = локальні транзакції + компенсація (Choreography vs Orchestration), Outbox = атомарний persist + event (DB → CDC/poller → Kafka), Circuit Breaker = 3 стани + cascading failure prevention, Bulkhead = ізоляція thread pools.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

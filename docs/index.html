@@ -442,54 +442,54 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
     </div>
     <div class="grid">
 
-      <div class="card wip" style="--accent:var(--coral)">
-        <div class="card-tag t-coral">Testing</div>
+      <a href="testing.html" class="card" style="--accent:var(--green)">
+        <div class="card-tag t-green">Testing</div>
         <h3>Spring Testing: @SpringBootTest, @WebMvcTest, Testcontainers</h3>
-        <p>шари тестів, @DataJpaTest, @MockBean, Testcontainers setup.</p>
-        <div class="card-chips"><span class="chip">@WebMvcTest</span><span class="chip">@DataJpaTest</span><span class="chip">Testcontainers</span></div>
-      </div>
+        <p>тест-піраміда, Mockito, test slices, WireMock.</p>
+        <div class="card-chips"><span class="chip">@WebMvcTest</span><span class="chip">Testcontainers</span><span class="chip">@DataJpaTest</span></div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--pink)">
-        <div class="card-tag t-pink">System Design</div>
+      <a href="sd-cap-latency.html" class="card" style="--accent:var(--amber)">
+        <div class="card-tag t-amber">System Design</div>
         <h3>System Design: CAP, back-of-envelope, latency</h3>
-        <p>CAP теорема, числа які треба знати, оцінка масштабу.</p>
-        <div class="card-chips"><span class="chip">CAP</span><span class="chip">latency</span><span class="chip">throughput</span></div>
-      </div>
+        <p>CAP теорема, latency numbers, оцінка масштабу, SLA/SLO.</p>
+        <div class="card-chips"><span class="chip">CAP</span><span class="chip">latency</span><span class="chip">SLO</span></div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--pink)">
-        <div class="card-tag t-pink">System Design</div>
+      <a href="sd-lb-ratelimit.html" class="card" style="--accent:var(--amber)">
+        <div class="card-tag t-amber">System Design</div>
         <h3>System Design: load balancer, rate limiting, CDN</h3>
-        <p>алгоритми LB, token bucket, leaky bucket, edge caching.</p>
-        <div class="card-chips"><span class="chip">round-robin</span><span class="chip">token bucket</span><span class="chip">CDN</span></div>
-      </div>
+        <p>LB алгоритми, token bucket, consistent hashing, CDN.</p>
+        <div class="card-chips"><span class="chip">least-conn</span><span class="chip">token bucket</span><span class="chip">consistent hash</span></div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--pink)">
-        <div class="card-tag t-pink">System Design</div>
+      <a href="microservices.html" class="card" style="--accent:var(--amber)">
+        <div class="card-tag t-amber">System Design</div>
         <h3>Мікросервіси: Saga, Outbox, Circuit Breaker</h3>
         <p>розподілені транзакції, transactional outbox, Resilience4j.</p>
         <div class="card-chips"><span class="chip">Saga</span><span class="chip">Outbox</span><span class="chip">Circuit Breaker</span></div>
-      </div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--pink)">
-        <div class="card-tag t-pink">System Design</div>
+      <a href="cqrs-eventsourcing.html" class="card" style="--accent:var(--amber)">
+        <div class="card-tag t-amber">System Design</div>
         <h3>Database per service, CQRS, Event Sourcing</h3>
-        <p>патерни розподілених даних, command vs query, event store.</p>
-        <div class="card-chips"><span class="chip">CQRS</span><span class="chip">Event Sourcing</span><span class="chip">read model</span></div>
-      </div>
+        <p>патерни розподілених даних, projections, event store.</p>
+        <div class="card-chips"><span class="chip">CQRS</span><span class="chip">Event Sourcing</span><span class="chip">projections</span></div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--pink)">
-        <div class="card-tag t-pink">System Design</div>
+      <a href="api-design.html" class="card" style="--accent:var(--blue)">
+        <div class="card-tag t-blue">API Design</div>
         <h3>REST vs gRPC vs GraphQL, idempotency</h3>
-        <p>порівняння протоколів, idempotency keys, versioning.</p>
-        <div class="card-chips"><span class="chip">REST</span><span class="chip">gRPC</span><span class="chip">GraphQL</span><span class="chip">idempotent</span></div>
-      </div>
+        <p>порівняння протоколів, idempotency key, versioning, pagination.</p>
+        <div class="card-chips"><span class="chip">REST</span><span class="chip">gRPC</span><span class="chip">idempotent</span></div>
+      </a>
 
-      <div class="card wip" style="--accent:var(--pink)">
-        <div class="card-tag t-pink">System Design</div>
+      <a href="observability.html" class="card" style="--accent:var(--teal)">
+        <div class="card-tag t-teal">Observability</div>
         <h3>Observability: metrics, traces, structured logging</h3>
-        <p>Micrometer, OpenTelemetry, correlation ID, log levels.</p>
-        <div class="card-chips"><span class="chip">Micrometer</span><span class="chip">trace</span><span class="chip">structured log</span></div>
-      </div>
+        <p>Micrometer, OpenTelemetry, MDC correlation, alerting.</p>
+        <div class="card-chips"><span class="chip">Micrometer</span><span class="chip">OTel</span><span class="chip">MDC</span></div>
+      </a>
 
     </div>
   </div>

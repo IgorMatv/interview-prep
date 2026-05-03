@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REST vs gRPC vs GraphQL, idempotency</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--blue);background:var(--blue-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--blue)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>REST vs gRPC vs GraphQL, idempotency</h1>
+  <span class="header-tag">API Design</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">API протоколи</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>REST — HTTP методи і статуси</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>gRPC</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>GraphQL</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Порівняння і вибір</div>
+    <div class="sidebar-section">API якість</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Idempotency</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>API versioning</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Pagination і filtering</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0: REST -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-blue">REST</span>
+        <h2>REST — HTTP методи і статус коди</h2>
+        <div class="code"><span class="cm">// HTTP методи і idempotency</span>
+GET    /orders          <span class="cm">// safe + idempotent: читання</span>
+GET    /orders/1        <span class="cm">// safe + idempotent</span>
+POST   /orders          <span class="cm">// non-idempotent: створення</span>
+PUT    /orders/1        <span class="cm">// idempotent: повна заміна</span>
+PATCH  /orders/1        <span class="cm">// non-idempotent (за замовч.): часткове оновлення</span>
+DELETE /orders/1        <span class="cm">// idempotent: видалення</span>
+
+<span class="cm">// Статус коди — треба знати основні</span>
+200 OK                  <span class="cm">// GET success</span>
+201 Created             <span class="cm">// POST success, Location header</span>
+204 No Content          <span class="cm">// DELETE success, PUT success</span>
+400 Bad Request         <span class="cm">// validation error</span>
+401 Unauthorized        <span class="cm">// не аутентифікований</span>
+403 Forbidden           <span class="cm">// аутентифікований, але без прав</span>
+404 Not Found           <span class="cm">// ресурс не знайдений</span>
+409 Conflict            <span class="cm">// конфлікт (дублікат, optimistic lock)</span>
+422 Unprocessable       <span class="cm">// семантична помилка валідації</span>
+429 Too Many Requests   <span class="cm">// rate limited</span>
+500 Internal Error      <span class="cm">// невідома помилка сервера</span>
+503 Service Unavailable <span class="cm">// сервіс недоступний</span></code></div>
+      </div>
+    </div>
+
+    <!-- 1: gRPC -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-teal">gRPC</span>
+        <h2>gRPC</h2>
+        <p>RPC фреймворк від Google. Protocol Buffers (binary) + HTTP/2. Суворо типізований контракт у .proto файлах.</p>
+        <div class="code"><span class="cm">// route.proto</span>
+syntax = "proto3";
+
+service RouteService {
+  rpc CreateRoute (CreateRouteRequest) returns (RouteResponse);
+  rpc StreamRoutes (RouteFilter) returns (stream RouteResponse); <span class="cm">// streaming</span>
+}
+
+message CreateRouteRequest {
+  repeated int64 poi_ids = 1;
+  int32 max_duration_minutes = 2;
+}
+
+message RouteResponse {
+  int64 id = 1;
+  string status = 2;
+  repeated Stop stops = 3;
+}</code></div>
+        <div class="callout callout-info">
+          <strong>gRPC переваги:</strong> ~5-7x швидше ніж REST/JSON (binary protocol, HTTP/2 multiplexing), строгий контракт (proto schema), bidirectional streaming, code generation для клієнта. <strong>Мінус:</strong> не читається людиною, складніше debug, браузер не підтримує нативно.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: GraphQL -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-purple">GraphQL</span>
+        <h2>GraphQL</h2>
+        <p>Клієнт сам вказує які поля потрібні. Вирішує over-fetching і under-fetching REST.</p>
+        <div class="code"><span class="cm">// Клієнт запитує тільки потрібні поля</span>
+query {
+  route(id: "123") {
+    id
+    status
+    stops {
+      poi { name, category }
+      arrivalTime
+    }
+  }
+}
+<span class="cm">// Один endpoint, один запит = саме те що треба</span>
+<span class="cm">// REST: GET /routes/123 + GET /stops?routeId=123 + GET /pois?stopId=...</span>
+
+<span class="cm">// Mutation (write)</span>
+mutation {
+  createRoute(input: { poiIds: [1, 2, 3] }) {
+    id
+    status
+  }
+}</code></div>
+        <div class="callout callout-warn">
+          <strong>GraphQL проблеми:</strong> N+1 (DataLoader потрібен), складне кешування (POST), може бути over-engineered для simple REST API. Добре для: public API, мобільні клієнти де bandwidth важливий.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: порівняння -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-gray">порівняння</span>
+        <h2>Порівняння і вибір</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th></th><th>REST</th><th>gRPC</th><th>GraphQL</th></tr></thead>
+            <tbody>
+              <tr><td>Протокол</td><td>HTTP/1.1+JSON</td><td>HTTP/2+Protobuf</td><td>HTTP/1.1+JSON</td></tr>
+              <tr><td>Продуктивність</td><td class="td-warn">середня</td><td class="td-good">висока</td><td class="td-warn">середня</td></tr>
+              <tr><td>Типізація</td><td class="td-warn">OpenAPI</td><td class="td-good">proto schema</td><td class="td-good">SDL schema</td></tr>
+              <tr><td>Browser native</td><td class="td-good">так</td><td class="td-bad">ні (grpc-web)</td><td class="td-good">так</td></tr>
+              <tr><td>Streaming</td><td class="td-warn">SSE/WS</td><td class="td-good">вбудований</td><td class="td-warn">subscriptions</td></tr>
+              <tr><td>Кешування</td><td class="td-good">HTTP cache</td><td class="td-bad">складно</td><td class="td-bad">складно</td></tr>
+              <tr><td>Когда</td><td>public API, CRUD</td><td>internal services</td><td>flexible client queries</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: idempotency -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-amber">idempotency</span>
+        <h2>Idempotency</h2>
+        <p>Операція idempotent якщо повторний виклик з тими самими параметрами дає той самий результат. Критично при retry і network failures.</p>
+        <div class="code"><span class="cm">// Idempotency key: клієнт генерує UUID для запиту</span>
+POST /orders
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+
+{
+  "items": [...],
+  "total": 100
+}
+
+<span class="cm">// Перший запит: order created, відповідь 201</span>
+<span class="cm">// Повторний (retry): знаходимо в кеші за ключем → 201 та самий response</span>
+<span class="cm">// Не створюємо дублікат!</span></code></div>
+        <div class="code"><span class="cm">// Реалізація через Redis</span>
+<span class="ann">@PostMapping</span>(<span class="str">"/orders"</span>)
+<span class="kw">public</span> <span class="cls">ResponseEntity</span>&lt;<span class="cls">OrderDto</span>&gt; create(
+        <span class="ann">@RequestHeader</span>(<span class="str">"Idempotency-Key"</span>) <span class="cls">String</span> key,
+        <span class="ann">@RequestBody</span> <span class="cls">CreateOrderRequest</span> req) {
+
+    <span class="cls">String</span> cacheKey = <span class="str">"idempotency:"</span> + key;
+    <span class="cls">OrderDto</span> cached = redis.opsForValue().get(cacheKey);
+    <span class="kw">if</span> (cached != <span class="kw">null</span>) <span class="kw">return</span> <span class="cls">ResponseEntity</span>.status(<span class="num">201</span>).body(cached);
+
+    <span class="cls">OrderDto</span> order = orderService.create(req);
+    redis.opsForValue().set(cacheKey, order, <span class="cls">Duration</span>.ofHours(<span class="num">24</span>));
+    <span class="kw">return</span> <span class="cls">ResponseEntity</span>.status(<span class="num">201</span>).body(order);
+}</code></div>
+      </div>
+    </div>
+
+    <!-- 5: versioning -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-blue">versioning</span>
+        <h2>API versioning</h2>
+        <div class="code"><span class="cm">// Варіант 1: URL path (найпоширеніший)</span>
+GET /api/v1/routes
+GET /api/v2/routes
+
+<span class="cm">// Варіант 2: Header</span>
+GET /api/routes
+API-Version: 2
+
+<span class="cm">// Варіант 3: Query param</span>
+GET /api/routes?version=2
+
+<span class="cm">// Backward compatibility правила:</span>
+<span class="cm">// ✓ Додати нове поле в response — OK</span>
+<span class="cm">// ✓ Додати новий optional request параметр — OK</span>
+<span class="cm">// ✗ Видалити поле з response — breaking change</span>
+<span class="cm">// ✗ Змінити тип поля — breaking change</span>
+<span class="cm">// ✗ Зробити optional параметр required — breaking change</span>
+<span class="cm">// Deprecation: зберігати старий API + попереджувати мінімум 6 міс</span></code></div>
+      </div>
+    </div>
+
+    <!-- 6: pagination -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-teal">pagination</span>
+        <h2>Pagination і filtering</h2>
+        <div class="code"><span class="cm">// Offset-based (проста, але проблеми при великих даних)</span>
+GET /orders?page=2&size=20&sort=createdAt,desc
+<span class="cm">// Проблема: при вставці нових records між сторінками → дублікати/пропуски</span>
+<span class="cm">// Дорого для великих offset (DB сканує N+size рядків)</span>
+
+<span class="cm">// Cursor-based (для feeds, infinite scroll)</span>
+GET /orders?cursor=eyJpZCI6MTAwfQ==&size=20
+<span class="cm">// cursor = base64(lastItemId або lastCreatedAt)</span>
+<span class="cm">// Стабільний, ефективний, не підтримує "стрибок на сторінку 50"</span>
+
+<span class="cm">// Spring Data відповідь з пагінацією</span>
+{
+  "content": [...],
+  "page": { "number": 0, "size": 20, "totalElements": 150, "totalPages": 8 },
+  "links": {
+    "self": "/orders?page=0",
+    "next": "/orders?page=1",
+    "last": "/orders?page=7"
+  }
+}
+
+<span class="cm">// Filtering</span>
+GET /orders?status=PAID&userId=42&createdAfter=2024-01-01&sort=total,desc</code></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> GET/DELETE idempotent, POST не idempotent, PUT idempotent (повна заміна), gRPC = Protobuf + HTTP/2 для internal services, GraphQL для flexible client queries, idempotency key для safe retry, cursor pagination для великих списків.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

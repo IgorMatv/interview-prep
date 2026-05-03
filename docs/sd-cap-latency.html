@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: CAP, back-of-envelope, latency</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--amber);background:var(--amber-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--amber)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+.latency-row{display:flex;align-items:center;gap:.75rem;padding:.4rem 0;border-bottom:1px solid var(--border)}
+.latency-row:last-child{border-bottom:none}
+.latency-op{font-size:13px;color:#9ea3b0;flex:1}
+.latency-val{font-family:var(--font-mono);font-size:12px;color:var(--text);min-width:90px;text-align:right}
+.latency-bar{height:6px;border-radius:3px;background:var(--teal);opacity:.6;min-width:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem}
+.metric{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.9rem 1rem}
+.metric .val{font-size:20px;font-weight:600;color:var(--text);font-family:var(--font-mono)}.metric .lbl{font-size:11px;color:var(--muted);margin-top:3px}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>System Design: CAP, back-of-envelope, latency</h1>
+  <span class="header-tag">System Design</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Теорія</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>CAP теорема</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>PACELC і реальність</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Latency numbers</div>
+    <div class="sidebar-section">Оцінки</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Back-of-envelope</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Масштабування — числа</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>SLA, SLO, SLI</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Підхід до SD інтерв'ю</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0: CAP -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-amber">CAP</span>
+        <h2>CAP теорема</h2>
+        <p>Розподілена система може гарантувати тільки 2 з 3: <strong>C</strong>onsistency, <strong>A</strong>vailability, <strong>P</strong>artition tolerance. При network partition треба вибирати між C і A.</p>
+        <div class="grid2">
+          <div class="metric"><div class="val">CP</div><div class="lbl">Consistency + Partition tolerance<br>MongoDB, HBase, ZooKeeper<br>→ жертвує availability</div></div>
+          <div class="metric"><div class="val">AP</div><div class="lbl">Availability + Partition tolerance<br>Cassandra, DynamoDB, CouchDB<br>→ eventual consistency</div></div>
+        </div>
+        <div class="callout callout-info">
+          Partition tolerance — обов'язкова для реальної розподіленої системи (мережа ЗАВЖДИ може розпастись). Тому реальний вибір: <strong>CP або AP</strong> при partition. CA — тільки для single-node.
+        </div>
+      </div>
+      <div class="card">
+        <h3>На практиці</h3>
+        <ul>
+          <li><strong>PostgreSQL</strong> — CA (single node), CP при реплікації з synchronous commit</li>
+          <li><strong>MySQL + synchronous replication</strong> — CP</li>
+          <li><strong>Cassandra</strong> — AP за замовчуванням, можна tunable consistency</li>
+          <li><strong>Redis Cluster</strong> — AP (async replication → можлива втрата даних)</li>
+          <li><strong>Kafka</strong> — CP (ISR + acks=all)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 1: PACELC -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-amber">PACELC</span>
+        <h2>PACELC — розширення CAP</h2>
+        <p>CAP описує тільки поведінку при partition. PACELC додає: навіть без partition є trade-off між Latency і Consistency.</p>
+        <div class="code"><span class="cm">// PACELC: If Partition → A or C, Else → L or C</span>
+<span class="cm">//</span>
+<span class="cm">// DynamoDB:  PA/EL → доступна при partition, низька latency без</span>
+<span class="cm">// Cassandra: PA/EL → те саме, tunable</span>
+<span class="cm">// MongoDB:   PC/EC → консистентна, вища latency</span>
+<span class="cm">// PostgreSQL:PC/EC → strong consistency, synchronous</span>
+<span class="cm">// MySQL:     PC/EC</span></code></div>
+        <div class="callout callout-info">
+          На практиці важливіші питання: <strong>яка consistency model потрібна?</strong> (strong, eventual, read-your-writes), яка latency прийнятна, і який throughput потрібен. CAP — корисна шпаргалка, але не повна картина.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: latency -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">latency</span>
+        <h2>Latency numbers — треба знати напам'ять</h2>
+        <div class="latency-row"><span class="latency-op">L1 cache reference</span><div class="latency-bar" style="width:4px"></div><span class="latency-val">0.5 ns</span></div>
+        <div class="latency-row"><span class="latency-op">L2 cache reference</span><div class="latency-bar" style="width:7px"></div><span class="latency-val">7 ns</span></div>
+        <div class="latency-row"><span class="latency-op">Mutex lock/unlock</span><div class="latency-bar" style="width:8px"></div><span class="latency-val">25 ns</span></div>
+        <div class="latency-row"><span class="latency-op">Main memory reference</span><div class="latency-bar" style="width:20px"></div><span class="latency-val">100 ns</span></div>
+        <div class="latency-row"><span class="latency-op">SSD random read</span><div class="latency-bar" style="width:30px"></div><span class="latency-val">150 µs</span></div>
+        <div class="latency-row"><span class="latency-op">Read 1MB from memory</span><div class="latency-bar" style="width:25px"></div><span class="latency-val">250 µs</span></div>
+        <div class="latency-row"><span class="latency-op">Read 1MB from SSD</span><div class="latency-bar" style="width:40px"></div><span class="latency-val">1 ms</span></div>
+        <div class="latency-row"><span class="latency-op">Same datacenter round trip</span><div class="latency-bar" style="width:50px"></div><span class="latency-val">0.5 ms</span></div>
+        <div class="latency-row"><span class="latency-op">HDD seek</span><div class="latency-bar" style="width:80px"></div><span class="latency-val">10 ms</span></div>
+        <div class="latency-row"><span class="latency-op">Round trip USA → EU</span><div class="latency-bar" style="width:120px"></div><span class="latency-val">150 ms</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>Ключові висновки:</strong> Memory в 1000× швидша за SSD. SSD в 100× швидша за HDD. Мережа в датацентрі ~0.5ms — дешева. Трансатлантична мережа — дорога (150ms). Redis в пам'яті → мікросекунди. DB на диску → мілісекунди.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: back-of-envelope -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-green">оцінки</span>
+        <h2>Back-of-envelope розрахунки</h2>
+        <div class="code"><span class="cm">// Корисні константи:</span>
+<span class="cm">// 1 байт = 8 біт</span>
+<span class="cm">// 1 KB = 10^3, 1 MB = 10^6, 1 GB = 10^9, 1 TB = 10^12</span>
+<span class="cm">// 1 секунда = 10^9 наносекунд</span>
+<span class="cm">// 1 день = 86400 ≈ 10^5 секунд</span>
+<span class="cm">// 1 місяць ≈ 2.5 × 10^6 секунд</span>
+<span class="cm">// 1 рік ≈ 3 × 10^7 секунд</span>
+
+<span class="cm">// Приклад: Twitter-подібний сервіс</span>
+<span class="cm">// 300M active users, 50% daily → 150M DAU</span>
+<span class="cm">// Кожен читає 100 tweets/day → 15B reads/day</span>
+<span class="cm">// 15B / 86400 ≈ 175K reads/sec</span>
+<span class="cm">// Запис: 1% users пишуть 2 tweets/day</span>
+<span class="cm">// 1.5M × 2 / 86400 ≈ 35 writes/sec</span>
+<span class="cm">// Read/Write ratio ≈ 5000:1 → read-heavy!</span>
+
+<span class="cm">// Storage: 1 tweet ≈ 280 chars = 280 bytes ≈ 300 bytes</span>
+<span class="cm">// 35 writes/sec × 300 bytes = 10 KB/sec</span>
+<span class="cm">// За рік: 10 KB × 3×10^7 ≈ 300 GB text/year</span></code></div>
+      </div>
+    </div>
+
+    <!-- 4: масштабування -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-blue">числа</span>
+        <h2>Числа для масштабування</h2>
+        <div class="code"><span class="cm">// Один сервер (Spring Boot, 8 cores):</span>
+<span class="cm">// ~10K-50K HTTP requests/sec (залежно від операції)</span>
+<span class="cm">// ~10 concurrent DB connections → ~1K DB queries/sec</span>
+
+<span class="cm">// PostgreSQL single node:</span>
+<span class="cm">// ~10K-50K simple queries/sec</span>
+<span class="cm">// ~1K complex queries/sec</span>
+<span class="cm">// ~100 transactions/sec з важкими joins</span>
+
+<span class="cm">// Redis:</span>
+<span class="cm">// ~100K-1M GET/SET operations/sec (single node)</span>
+<span class="cm">// Latency: < 1ms для більшості операцій</span>
+
+<span class="cm">// Kafka:</span>
+<span class="cm">// ~1M messages/sec per broker (з правильним tuning)</span>
+<span class="cm">// Latency: ~5-15ms end-to-end</span>
+
+<span class="cm">// Загальні правила:</span>
+<span class="cm">// Vertical scaling: до ~64 cores, 1TB RAM</span>
+<span class="cm">// Horizontal scaling: stateless сервіси → легко</span>
+<span class="cm">// DB sharding: від ~10M users або 10TB</span>
+<span class="cm">// CDN: статика, ~95% cache hit ratio</span></code></div>
+      </div>
+    </div>
+
+    <!-- 5: SLA/SLO/SLI -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-teal">reliability</span>
+        <h2>SLA, SLO, SLI</h2>
+        <ul>
+          <li><strong>SLI</strong> (Service Level Indicator) — вимірювана метрика: latency p99, error rate, availability</li>
+          <li><strong>SLO</strong> (Service Level Objective) — внутрішня ціль: p99 latency < 200ms, availability 99.9%</li>
+          <li><strong>SLA</strong> (Service Level Agreement) — зовнішній договір з штрафами: 99.9% uptime або credit</li>
+        </ul>
+        <div class="code"><span class="cm">// Availability і downtime per year:</span>
+<span class="cm">// 99%    → 3.65 days  downtime/year</span>
+<span class="cm">// 99.9%  → 8.7 hours  downtime/year  ("three nines")</span>
+<span class="cm">// 99.99% → 52 minutes downtime/year  ("four nines")</span>
+<span class="cm">// 99.999%→ 5 minutes  downtime/year  ("five nines")</span>
+
+<span class="cm">// Error budget: 99.9% → 0.1% = 8.7 hours/year</span>
+<span class="cm">// Витрачаємо на planned maintenance, incidents</span>
+
+<span class="cm">// Типові latency SLO:</span>
+<span class="cm">// p50 < 50ms, p99 < 200ms, p999 < 1s</span>
+<span class="cm">// p99.9 важливіший ніж average для UX</span></code></div>
+        <div class="callout callout-info">
+          <strong>p99 vs average:</strong> середня latency 50ms може ховати p99=2s. 1% users з 2s — при 10K QPS = 100 users/sec отримують погану відповідь. Завжди дивись на percentiles, не середнє.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: підхід до SD -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-amber">інтерв'ю</span>
+        <h2>Структура SD інтерв'ю</h2>
+        <p>Стандартний фреймворк для будь-якого System Design питання. 45 хвилин → чіткий розподіл часу.</p>
+        <ul>
+          <li><strong>1. Clarify (5 хв)</strong> — уточнити вимоги: DAU, QPS, latency SLO, consistency requirements. Не починай проектувати до розуміння масштабу.</li>
+          <li><strong>2. Back-of-envelope (5 хв)</strong> — порахуй: QPS reads/writes, storage/year, bandwidth. Це визначить архітектурні рішення.</li>
+          <li><strong>3. High-level design (10 хв)</strong> — клієнт → LB → сервіси → DB. Компоненти і взаємодія.</li>
+          <li><strong>4. Deep dive (15 хв)</strong> — інтерв'юер фокусує: DB schema, caching strategy, або конкретний компонент.</li>
+          <li><strong>5. Bottlenecks (5 хв)</strong> — SPOF, масштабування, failover.</li>
+        </ul>
+        <div class="callout callout-ok">
+          <strong>Ключова порада:</strong> говори вголос про trade-offs. "Ми можемо використати X, але тоді Y. Альтернатива — Z з іншим trade-off." Інтерв'юер оцінює мислення, не правильну відповідь.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

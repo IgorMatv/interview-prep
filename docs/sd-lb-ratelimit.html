@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: LB, rate limiting, CDN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--amber);background:var(--amber-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--amber)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-gray{background:var(--bg3);color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+.table-wrap{overflow-x:auto;margin-top:.75rem}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:11px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:#9ea3b0}
+tr:last-child td{border-bottom:none}
+.td-good{color:var(--green)}.td-bad{color:var(--red)}.td-warn{color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>System Design: LB, rate limiting, CDN</h1>
+  <span class="header-tag">System Design</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Балансування</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Load Balancer алгоритми</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>L4 vs L7, Health checks</div>
+    <div class="sidebar-section">Rate Limiting</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Token bucket і алгоритми</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Реалізація через Redis</div>
+    <div class="sidebar-section">Кешування і CDN</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Caching стратегії</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>CDN і edge caching</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Consistent Hashing</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0: LB алгоритми -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-amber">load balancer</span>
+        <h2>Load Balancer алгоритми</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Алгоритм</th><th>Коли</th><th>Мінус</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Round Robin</strong></td><td>однорідні запити</td><td>ігнорує load сервера</td></tr>
+              <tr><td><strong>Weighted Round Robin</strong></td><td>різна потужність серверів</td><td>ручне налаштування ваг</td></tr>
+              <tr><td><strong>Least Connections</strong></td><td>різна тривалість запитів</td><td>overhead підрахунку</td></tr>
+              <tr><td><strong>IP Hash</strong></td><td>sticky sessions</td><td>нерівномірний розподіл</td></tr>
+              <tr><td><strong>Random</strong></td><td>простота</td><td>не оптимальний</td></tr>
+              <tr><td><strong>Resource Based</strong></td><td>dynamic load aware</td><td>потрібні health metrics</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout-info">
+          <strong>Least Connections</strong> — найкращий default для web сервісів з різним часом обробки. Round Robin добрий для однорідних stateless операцій.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1: L4 vs L7 -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-amber">LB типи</span>
+        <h2>L4 vs L7 Load Balancer</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th></th><th>L4 (Transport)</th><th>L7 (Application)</th></tr></thead>
+            <tbody>
+              <tr><td>Рівень</td><td>TCP/UDP</td><td>HTTP/HTTPS</td></tr>
+              <tr><td>Бачить</td><td>IP + порт</td><td>URL, headers, cookies</td></tr>
+              <tr><td>Швидкість</td><td class="td-good">дуже швидкий</td><td class="td-warn">повільніший</td></tr>
+              <tr><td>Routing by URL</td><td class="td-bad">ні</td><td class="td-good">так</td></tr>
+              <tr><td>SSL termination</td><td class="td-bad">складно</td><td class="td-good">так</td></tr>
+              <tr><td>Приклади</td><td>AWS NLB, HAProxy (TCP)</td><td>Nginx, AWS ALB, Traefik</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <hr class="sep">
+        <h3>Health checks</h3>
+        <div class="code"><span class="cm">// Active health check: LB пінгує сервер</span>
+<span class="cm">// GET /actuator/health → 200 OK → здоровий</span>
+<span class="cm">// Timeout або 5xx → вивести з ротації</span>
+
+<span class="cm">// Passive: LB моніторить реальний трафік</span>
+<span class="cm">// 3 consecutive failures → server down</span>
+
+<span class="cm">// Spring Boot Actuator</span>
+management.endpoints.web.exposure.include=health
+management.endpoint.health.show-details=always</code></div>
+      </div>
+    </div>
+
+    <!-- 2: rate limiting -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">rate limiting</span>
+        <h2>Rate limiting алгоритми</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Алгоритм</th><th>Суть</th><th>Особливість</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Token Bucket</strong></td><td>токени наповнюються, запит = 1 токен</td><td>дозволяє burst</td></tr>
+              <tr><td><strong>Leaky Bucket</strong></td><td>черга з фіксованою витратою</td><td>рівний вихідний потік</td></tr>
+              <tr><td><strong>Fixed Window</strong></td><td>N запитів за вікно (1 хв)</td><td>surge на межі вікон</td></tr>
+              <tr><td><strong>Sliding Window Log</strong></td><td>log часових позначок</td><td>точний, дорого по пам'яті</td></tr>
+              <tr><td><strong>Sliding Window Counter</strong></td><td>гібрид fixed + sliding</td><td>баланс точності/пам'яті</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout-info">
+          <strong>Token Bucket — найпопулярніший</strong> для API rate limiting. Дозволяє burst (короткочасний пік) при незаповненому bucket. AWS API Gateway, Stripe — використовують token bucket.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: Redis rate limit -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-teal">реалізація</span>
+        <h2>Rate limiting через Redis</h2>
+        <div class="code"><span class="cm">// Fixed Window через Redis INCR + EXPIRE</span>
+<span class="cm">// Lua script для атомарності</span>
+local key = "rate:" .. user_id .. ":" .. math.floor(time/60)
+local count = redis.call("INCR", key)
+if count == 1 then
+    redis.call("EXPIRE", key, 60)  -- 60 секунд
+end
+return count
+
+<span class="cm">// Sliding Window через ZSET</span>
+<span class="cm">// Score = timestamp, member = request_id</span>
+<span class="cm">// Видаляємо старі: ZREMRANGEBYSCORE key 0 (now-window)</span>
+<span class="cm">// Рахуємо: ZCARD key</span>
+<span class="cm">// Додаємо: ZADD key now request_id</span>
+
+<span class="cm">// Spring: Bucket4j або Resilience4j rate limiter</span>
+<span class="cm">// Bucket4j підтримує Redis backend</span></code></div>
+        <div class="callout callout-warn">
+          Distributed rate limiting (кілька нод) — потрібен shared state (Redis). Локальний rate limiter на кожній ноді дасть N×limit ефективно. При 10 інстансах і ліміті 100 req/min → 1000 req/min реально.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: caching -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-green">caching</span>
+        <h2>Caching стратегії (системний рівень)</h2>
+        <div class="code"><span class="cm">// Рівні кешування (від клієнта до DB):</span>
+<span class="cm">// 1. Browser cache (HTTP Cache-Control)</span>
+<span class="cm">// 2. CDN (Cloudflare, CloudFront)</span>
+<span class="cm">// 3. API Gateway cache</span>
+<span class="cm">// 4. Application cache (Redis)</span>
+<span class="cm">// 5. DB query cache (L2 Hibernate)</span>
+<span class="cm">// 6. DB buffer pool (shared_buffers)</span>
+
+<span class="cm">// Cache invalidation strategies:</span>
+<span class="cm">// TTL: простий, може бути stale</span>
+<span class="cm">// Event-based: точний, складніше</span>
+<span class="cm">// Write-through: завжди актуальний, overhead</span>
+<span class="cm">// Write-behind: async, ризик втрати</span>
+
+<span class="cm">// HTTP Cache-Control</span>
+Cache-Control: max-age=3600, public       <span class="cm">// 1 год, кешувати скрізь</span>
+Cache-Control: max-age=0, must-revalidate <span class="cm">// перевіряти кожен раз</span>
+Cache-Control: no-store                   <span class="cm">// не кешувати (особисті дані)</span>
+ETag: "abc123"                            <span class="cm">// conditional request</span></code></div>
+        <div class="callout callout-ok">
+          <strong>Cache hit ratio > 90%</strong> — хороший результат. 99%+ — відмінно. Нижче 80% — кеш не ефективний або TTL занадто короткий.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: CDN -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-blue">CDN</span>
+        <h2>CDN і edge caching</h2>
+        <p>Content Delivery Network — географічно розподілені edge servers. Запит іде до найближчого edge замість origin server.</p>
+        <ul>
+          <li><strong>Статика:</strong> images, JS, CSS, fonts — основний use case. Cache раз, роздавай з edge назавжди.</li>
+          <li><strong>Dynamic CDN:</strong> Cloudflare Workers, CloudFront Functions — виконання на edge.</li>
+          <li><strong>API caching:</strong> GET endpoints з Cache-Control → кешується на edge.</li>
+        </ul>
+        <div class="code"><span class="cm">// Cache invalidation при deploy</span>
+<span class="cm">// Стратегія 1: hash у filename (Webpack, Vite)</span>
+<span class="cm">// bundle.a3f9b2.js → browser cache forever</span>
+<span class="cm">// при зміні → новий hash → новий URL → cache miss</span>
+
+<span class="cm">// Стратегія 2: explicit invalidation</span>
+<span class="cm">// aws cloudfront create-invalidation --paths "/*"</span>
+
+<span class="cm">// Стратегія 3: versioned URL</span>
+<span class="cm">// /api/v2/routes → старий URL не ламається</span></code></div>
+      </div>
+    </div>
+
+    <!-- 6: consistent hashing -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-purple">consistent hashing</span>
+        <h2>Consistent Hashing</h2>
+        <p>Розподіл ключів між нодами так що при додаванні/видаленні ноди перерозподіляється мінімум ключів.</p>
+        <div class="code"><span class="cm">// Звичайний hash: key % N серверів</span>
+<span class="cm">// При зміні N → переміщуються майже всі ключі → cache miss</span>
+
+<span class="cm">// Consistent hashing:</span>
+<span class="cm">// 1. Кільце від 0 до 2^32</span>
+<span class="cm">// 2. Сервери розміщуються на кільці за hash(server_id)</span>
+<span class="cm">// 3. Ключ → hash(key) → рухаємось по кільцю → перший сервер</span>
+<span class="cm">// 4. При додаванні сервера: тільки ключі між попереднім і новим переміщуються</span>
+<span class="cm">// 5. При видаленні: ключі переходять до наступного</span>
+
+<span class="cm">// Virtual nodes: кожен сервер = K точок на кільці</span>
+<span class="cm">// Більш рівномірний розподіл</span>
+<span class="cm">// Потужніший сервер = більше virtual nodes</span>
+
+<span class="cm">// Використовується в:</span>
+<span class="cm">// - Cassandra (розподіл даних по нодах)</span>
+<span class="cm">// - Redis Cluster (hash slots)</span>
+<span class="cm">// - CDN (вибір edge server)</span>
+<span class="cm">// - Distributed caches</span></code></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> Round Robin vs Least Connections, L4 vs L7 LB, Token Bucket для rate limiting, consistent hashing при resharding, CDN = географічний cache.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>
