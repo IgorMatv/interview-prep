@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Behavioral Interview: STAR, типові питання</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--green);background:var(--green-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--green)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-green{background:var(--green-bg);color:var(--green)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-blue{background:var(--blue-bg);color:var(--blue)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.4rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+.star-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.9rem 1rem;margin:.5rem 0}
+.star-label{font-size:11px;font-family:var(--font-mono);font-weight:600;margin-bottom:.3rem}
+.star-s{color:var(--blue)}.star-t{color:var(--amber)}.star-a{color:var(--green)}.star-r{color:var(--teal)}
+.star-text{font-size:13px;color:#9ea3b0}
+.q-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.75rem 1rem;margin:.4rem 0}
+.q-text{font-size:13.5px;color:var(--text);margin-bottom:.3rem}
+.q-hint{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Behavioral Interview</h1>
+  <span class="header-tag">Soft Skills</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">STAR метод</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>STAR структура</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Приклад STAR відповіді</div>
+    <div class="sidebar-section">Типові питання</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Challenge і failure</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Teamwork і conflict</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Leadership і ініціатива</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Мотивація і career</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Антипатерни і поради</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-green">STAR</span>
+        <h2>STAR структура відповіді</h2>
+        <p>Behavioral питання перевіряють минулий досвід як предиктор майбутньої поведінки. Структурована відповідь за STAR — найефективніший формат.</p>
+        <div class="star-box">
+          <div class="star-label star-s">S — Situation</div>
+          <div class="star-text">Контекст. Де ти працював, яка команда, що за проект. 2-3 речення максимум. Не занурюйся в деталі що не впливають на суть.</div>
+        </div>
+        <div class="star-box">
+          <div class="star-label star-t">T — Task</div>
+          <div class="star-text">Твоя конкретна задача або відповідальність. Що <em>ти</em> мав зробити (не команда загалом).</div>
+        </div>
+        <div class="star-box">
+          <div class="star-label star-a">A — Action</div>
+          <div class="star-text">Конкретні кроки що <em>ти</em> зробив. Найважливіша частина — 60-70% часу. Деталі, технічні рішення, чому обрав саме цей підхід.</div>
+        </div>
+        <div class="star-box">
+          <div class="star-label star-r">R — Result</div>
+          <div class="star-text">Результат з числами якщо можливо. "Зменшили latency на 40%", "прискорили deploy з 2 годин до 20 хвилин". Що ти навчився.</div>
+        </div>
+        <div class="callout callout-info">
+          Оптимальна тривалість відповіді: <strong>2-3 хвилини</strong>. Підготуй 5-7 універсальних historій що покривають різні теми — не всі питання потребують нової historії.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1 -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-green">приклад</span>
+        <h2>Приклад STAR відповіді</h2>
+        <p><em>Питання: "Розкажи про технічний challenge що ти вирішив"</em></p>
+        <div class="star-box">
+          <div class="star-label star-s">Situation</div>
+          <div class="star-text">Я працював в команді 5 розробників над e-commerce платформою. Перед Black Friday у нас було навантаження 10K замовлень/день, але очікували 100K.</div>
+        </div>
+        <div class="star-box">
+          <div class="star-label star-t">Task</div>
+          <div class="star-text">Моєю задачею було оптимізувати процес оформлення замовлення — він мав latency 3-5 секунд, що неприйнятно при пікові.</div>
+        </div>
+        <div class="star-box">
+          <div class="star-label star-a">Action</div>
+          <div class="star-text">Спочатку я підключив профайлер і виявив N+1 проблему: кожен запит до cart робив окремий SQL для кожного продукту. Додав JOIN FETCH і зменшив кількість запитів з 50 до 3. Далі виніс незмінні дані (каталог, ціни) в Redis з TTL 5 хв. Ще знайшов синхронний HTTP-виклик до payment-сервісу який блокував потік — замінив на CompletableFuture.</div>
+        </div>
+        <div class="star-box">
+          <div class="star-label star-r">Result</div>
+          <div class="star-text">Latency знизилася з 4 секунд до 200ms. Black Friday пройшов без інцидентів при 150K замовлень. Навчився: профайлюй перед оптимізацією, не гадай.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-amber">challenge і failure</span>
+        <h2>Challenge і failure питання</h2>
+        <div class="q-card">
+          <div class="q-text">Tell me about the most challenging technical problem you solved.</div>
+          <div class="q-hint">→ Технічна складність, твій підхід до розслідування, що спробував і не спрацювало</div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Describe a time when you failed. What did you learn?</div>
+          <div class="q-hint">→ Реальна помилка (не "я занадто перфекціоніст"), конкретні наслідки, що змінив після</div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Tell me about a time you had to meet a tight deadline.</div>
+          <div class="q-hint">→ Пріоритизація, trade-offs, що відклав і чому</div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Describe a production incident you were involved in.</div>
+          <div class="q-hint">→ Виявлення, RCA, fix, postmortem, prevention</div>
+        </div>
+        <div class="callout callout-warn">
+          <strong>Failure питання — не пастка.</strong> Інтерв'юер хоче бачити self-awareness і зростання. Відмовитись від відповіді ("у мене не було справжніх невдач") — найгірший варіант. Вибери реальну, але не катастрофічну ситуацію.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-teal">teamwork</span>
+        <h2>Teamwork і conflict питання</h2>
+        <div class="q-card">
+          <div class="q-text">Describe a situation where you disagreed with a colleague or manager.</div>
+          <div class="q-hint">→ Покажи що можеш обстоювати позицію + слухати + досягти консенсусу. Уникай "я поступився без пояснень"</div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Tell me about a time you helped a teammate who was struggling.</div>
+          <div class="q-hint">→ Емпатія, конкретна допомога, результат для команди</div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Describe working in a cross-functional team.</div>
+          <div class="q-hint">→ Комунікація з non-technical stakeholders, переклад технічних речей</div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">How do you handle receiving critical code review feedback?</div>
+          <div class="q-hint">→ Ego-free, конструктивна реакція, вдячність за feedback</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-blue">leadership</span>
+        <h2>Leadership і ініціатива</h2>
+        <div class="q-card">
+          <div class="q-text">Tell me about a time you took initiative without being asked.</div>
+          <div class="q-hint">→ Ти помітив проблему, запропонував рішення, реалізував</div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Describe a time you had to influence without authority.</div>
+          <div class="q-hint">→ Переконав колег або менеджмент без прямих повноважень</div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Tell me about a time you mentored someone.</div>
+          <div class="q-hint">→ Як підходив до передачі знань, результат для mentee</div>
+        </div>
+        <div class="callout callout-ok">
+          <strong>Для Senior позиції</strong> очікується 2-3 historії з leadership/ownership. "Я взяв відповідальність за X і довів до кінця" — ключові слова.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-green">мотивація</span>
+        <h2>Мотивація і career питання</h2>
+        <div class="q-card">
+          <div class="q-text">Why are you leaving your current position?</div>
+          <div class="q-hint">→ Ніколи не говори погано про поточного роботодавця. "Шукаю нові виклики", "хочу рости в X напрямку"</div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Where do you see yourself in 3-5 years?</div>
+          <div class="q-hint">→ Орієнтуй відповідь на зростання в ролі (Tech Lead, Architect) або глибину. Покажи що думаєш про кар'єру</div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Why do you want to work at our company?</div>
+          <div class="q-hint">→ Дослідь компанію перед інтерв'ю. Tech stack, продукт, culture. "Мені подобається X що ви робите тому що Y"</div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">What are your strengths and weaknesses?</div>
+          <div class="q-hint">→ Strengths: конкретні, з прикладом. Weakness: реальна, але з тим як ти над нею працюєш</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-amber">антипатерни</span>
+        <h2>Антипатерни і поради</h2>
+        <ul>
+          <li><strong>"Ми зробили..."</strong> — говори "Я зробив". Інтерв'юер оцінює тебе, не команду. Можна згадати команду в контексті ("Я запропонував підхід, команда реалізувала")</li>
+          <li><strong>Теоретична відповідь</strong> — "В такій ситуації я б..." — замість реального прикладу. Готуй конкретні историї.</li>
+          <li><strong>Надто довга ситуація</strong> — 5 хвилин на Situation, 30 секунд на Action. Перевернутий STAR.</li>
+          <li><strong>Немає результату</strong> — кожна история має мати outcome, навіть якщо провальний.</li>
+          <li><strong>Негатив про колег/роботодавців</strong> — навіть якщо правда. Завжди нейтрально або фокус на тому що ти зробив.</li>
+        </ul>
+        <hr class="sep">
+        <h3>Питання які ти ставиш наприкінці</h3>
+        <ul>
+          <li>What does the tech stack look like and why did you choose it?</li>
+          <li>How does the team handle technical debt?</li>
+          <li>What would success look like in the first 3 months?</li>
+          <li>What are the biggest technical challenges the team is facing?</li>
+          <li>How is code review done here?</li>
+        </ul>
+        <div class="callout callout-ok">
+          Питання в кінці — обов'язкові. "Немає питань" = незацікавленість. Підготуй 3-4 питання заздалегідь.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

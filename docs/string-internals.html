@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String internals — Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--blue);background:var(--blue-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--blue)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>String internals</h1>
+  <span class="header-tag">Java Core</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">String</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Immutability і String Pool</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>== vs equals, intern()</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>String у Java 9+: compact strings</div>
+    <div class="sidebar-section">Конкатенація</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>StringBuilder vs StringBuffer</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>+ оператор під капотом</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>String методи — важливі</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Антипатерни</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-blue">immutability</span>
+        <h2>Immutability і String Pool</h2>
+        <p>String — immutable: кожна операція що "змінює" рядок створює новий об'єкт. String Pool (Heap) зберігає інтерновані рядки — literal однакового значення → один об'єкт.</p>
+        <div class="code"><span class="cm">// String literal → автоматично в String Pool</span>
+<span class="cls">String</span> a = <span class="str">"hello"</span>;   <span class="cm">// Pool</span>
+<span class="cls">String</span> b = <span class="str">"hello"</span>;   <span class="cm">// той самий об'єкт з Pool</span>
+a == b; <span class="cm">// true</span>
+
+<span class="cls">String</span> c = <span class="kw">new</span> <span class="cls">String</span>(<span class="str">"hello"</span>); <span class="cm">// новий об'єкт у heap (не Pool)</span>
+a == c;      <span class="cm">// false</span>
+a.equals(c); <span class="cm">// true</span>
+
+<span class="cm">// Чому immutable?</span>
+<span class="cm">// 1. Thread-safe без синхронізації</span>
+<span class="cm">// 2. Безпечний ключ HashMap (hashCode не змінюється)</span>
+<span class="cm">// 3. String Pool можливий тільки через immutability</span>
+<span class="cm">// 4. Security: не можна змінити URL, ім'я класу після перевірки</span></div>
+      </div>
+    </div>
+
+    <!-- 1 -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-blue">порівняння</span>
+        <h2>== vs equals, intern()</h2>
+        <div class="code"><span class="cm">// НІКОЛИ не порівнюй String через ==</span>
+<span class="cls">String</span> s1 = <span class="kw">new</span> <span class="cls">String</span>(<span class="str">"test"</span>);
+<span class="cls">String</span> s2 = <span class="kw">new</span> <span class="cls">String</span>(<span class="str">"test"</span>);
+s1 == s2;      <span class="cm">// false (різні об'єкти)</span>
+s1.equals(s2); <span class="cm">// true (однаковий вміст)</span>
+
+<span class="cm">// intern(): додає в Pool або повертає існуючий</span>
+<span class="cls">String</span> s3 = s1.intern();
+<span class="cls">String</span> s4 = s2.intern();
+s3 == s4; <span class="cm">// true (обидва з Pool)</span>
+
+<span class="cm">// Конкатенація compile-time → в Pool</span>
+<span class="cls">String</span> x = <span class="str">"hel"</span> + <span class="str">"lo"</span>; <span class="cm">// компілятор оптимізує в "hello" → Pool</span>
+x == a; <span class="cm">// true</span>
+
+<span class="cm">// Runtime конкатенація → НЕ в Pool</span>
+<span class="cls">String</span> part = <span class="str">"hel"</span>;
+<span class="cls">String</span> y = part + <span class="str">"lo"</span>; <span class="cm">// runtime → new String, не Pool</span>
+y == a; <span class="cm">// false</span></div>
+        <div class="callout callout-warn">
+          Класичне питання-пастка на співбесіді. Відповідь завжди: порівнюй рядки через <code>equals()</code>, а ще краще — <code>Objects.equals(a, b)</code> (null-safe).
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: compact strings -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">Java 9+</span>
+        <h2>Compact Strings (Java 9+)</h2>
+        <p>До Java 9: String зберігав <code>char[]</code> — 2 байти на символ. Java 9+: якщо рядок містить тільки Latin-1 символи → <code>byte[]</code> (1 байт/символ). Економія ~50% пам'яті для ASCII.</p>
+        <div class="code"><span class="cm">// До Java 9</span>
+<span class="kw">private final char</span>[] value; <span class="cm">// завжди 2 байти/символ</span>
+<span class="cm">// "hello" = 10 байт + header</span>
+
+<span class="cm">// Java 9+ Compact Strings</span>
+<span class="kw">private final byte</span>[] value;  <span class="cm">// 1 або 2 байти залежно від CODER</span>
+<span class="kw">private final byte</span> coder;    <span class="cm">// LATIN1=0 або UTF16=1</span>
+
+<span class="cm">// "hello" → LATIN1 → 5 байт (2x менше)</span>
+<span class="cm">// "Привіт" → UTF16 → 12 байт (як раніше)</span>
+
+<span class="cm">// Прозоро для програміста — API не змінився</span>
+<span class="cm">// Вмикається автоматично, -XX:-CompactStrings вимикає</span></div>
+      </div>
+    </div>
+
+    <!-- 3: StringBuilder -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-green">конкатенація</span>
+        <h2>StringBuilder vs StringBuffer</h2>
+        <div class="code"><span class="cm">// StringBuilder: mutable, НЕ thread-safe, швидкий</span>
+<span class="cls">StringBuilder</span> sb = <span class="kw">new</span> <span class="cls">StringBuilder</span>();
+sb.append(<span class="str">"Hello"</span>).append(<span class="str">", "</span>).append(<span class="str">"World"</span>);
+<span class="cls">String</span> result = sb.toString();
+
+<span class="cm">// StringBuffer: mutable, thread-safe (synchronized), повільніший</span>
+<span class="cm">// Майже не використовується в сучасному коді</span>
+<span class="cm">// Якщо потрібна thread-safety → StringJoiner або Stream joining</span>
+
+<span class="cm">// Корисні методи StringBuilder:</span>
+sb.insert(<span class="num">0</span>, <span class="str">"prefix"</span>);  <span class="cm">// вставити на позицію</span>
+sb.delete(<span class="num">2</span>, <span class="num">5</span>);          <span class="cm">// видалити діапазон</span>
+sb.reverse();               <span class="cm">// перевернути</span>
+sb.replace(<span class="num">0</span>, <span class="num">2</span>, <span class="str">"XX"</span>);   <span class="cm">// замінити діапазон</span>
+sb.length();                <span class="cm">// поточна довжина</span>
+sb.setLength(<span class="num">0</span>);           <span class="cm">// очистити (reuse об'єкту)</span></code></div>
+        <div class="callout callout-ok">
+          <strong>Коли StringBuilder:</strong> циклічна конкатенація (більше 3-4 операцій). Для <code>"a" + "b" + "c"</code> в одному виразі — компілятор сам використовує StringBuilder або String.concat.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4: + operator -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-amber">під капотом</span>
+        <h2>+ оператор — що генерує компілятор</h2>
+        <div class="code"><span class="cm">// Java 8: + розкривається в StringBuilder</span>
+<span class="cls">String</span> s = a + b + c;
+<span class="cm">// → new StringBuilder().append(a).append(b).append(c).toString()</span>
+
+<span class="cm">// Java 9+: invokedynamic (StringConcatFactory)</span>
+<span class="cm">// Ефективніше, але принцип той самий</span>
+
+<span class="cm">// ПОГАНО: + в циклі = O(n²) алокацій</span>
+<span class="cls">String</span> result = <span class="str">""</span>;
+<span class="kw">for</span> (<span class="cls">String</span> s : list) {
+    result += s;  <span class="cm">// кожна ітерація → новий StringBuilder + toString</span>
+}
+
+<span class="cm">// ДОБРЕ: один StringBuilder</span>
+<span class="cls">StringBuilder</span> sb = <span class="kw">new</span> <span class="cls">StringBuilder</span>();
+<span class="kw">for</span> (<span class="cls">String</span> s : list) sb.append(s);
+<span class="cls">String</span> result = sb.toString();
+
+<span class="cm">// АБО через Stream</span>
+<span class="cls">String</span> result = <span class="cls">String</span>.join(<span class="str">", "</span>, list);
+<span class="cls">String</span> result = list.stream().collect(<span class="cls">Collectors</span>.joining(<span class="str">", "</span>));</code></div>
+      </div>
+    </div>
+
+    <!-- 5: методи -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-teal">API</span>
+        <h2>String методи — важливі для співбесіди</h2>
+        <div class="code"><span class="cm">// Порівняння</span>
+s.equals(other)                    <span class="cm">// content equality</span>
+s.equalsIgnoreCase(other)
+s.compareTo(other)                 <span class="cm">// lexicographic (для sort)</span>
+s.startsWith("pre") / endsWith("suf")
+s.contains("sub")
+
+<span class="cm">// Трансформація</span>
+s.toUpperCase() / toLowerCase()
+s.trim()                           <span class="cm">// видалити leading/trailing whitespace</span>
+s.strip()                          <span class="cm">// Java 11+, Unicode-aware (краще)</span>
+s.stripLeading() / stripTrailing()
+s.replace("old", "new")            <span class="cm">// literal replace</span>
+s.replaceAll("regex", "new")       <span class="cm">// regex replace</span>
+
+<span class="cm">// Розбиття і аналіз</span>
+s.split(",")                       <span class="cm">// split за regex</span>
+s.split(",", -1)                   <span class="cm">// зберігає trailing empty strings</span>
+s.charAt(i)                        <span class="cm">// символ за індексом</span>
+s.indexOf("sub")                   <span class="cm">// -1 якщо не знайдено</span>
+s.substring(from, to)              <span class="cm">// [from, to)</span>
+
+<span class="cm">// Java 11+</span>
+s.isBlank()                        <span class="cm">// "" або тільки whitespace</span>
+s.lines()                          <span class="cm">// Stream&lt;String&gt; по рядках</span>
+s.repeat(3)                        <span class="cm">// "ab".repeat(3) → "ababab"</span>
+
+<span class="cm">// Форматування</span>
+<span class="cls">String</span>.format(<span class="str">"%s has %d items"</span>, name, count)  <span class="cm">// старий спосіб</span>
+<span class="str">"%s has %d items"</span>.formatted(name, count)       <span class="cm">// Java 15+</span></code></div>
+      </div>
+    </div>
+
+    <!-- 6: антипатерни -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-red">антипатерни</span>
+        <h2>Типові помилки</h2>
+        <div class="code"><span class="cm">// 1. == для порівняння</span>
+<span class="kw">if</span> (status == <span class="str">"ACTIVE"</span>) { ... } <span class="cm">// WRONG: може не спрацювати</span>
+<span class="kw">if</span> (<span class="str">"ACTIVE"</span>.equals(status)) { ... }  <span class="cm">// OK: константа зліва → null-safe</span>
+
+<span class="cm">// 2. + в циклі</span>
+<span class="cls">String</span> result = <span class="str">""</span>;
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">1000</span>; i++) result += i; <span class="cm">// O(n²)!</span>
+
+<span class="cm">// 3. split без ліміту на керовані вхідні дані</span>
+<span class="str">"a,,b"</span>.split(<span class="str">","</span>)    <span class="cm">// → ["a", "", "b"]</span>
+<span class="str">"a,,b,"</span>.split(<span class="str">","</span>)   <span class="cm">// → ["a", "", "b"] — trailing пустий відкидається!</span>
+<span class="str">"a,,b,"</span>.split(<span class="str">","</span>, -<span class="num">1</span>) <span class="cm">// → ["a", "", "b", ""] — зберігається</span>
+
+<span class="cm">// 4. substring довгого рядка і утримання всього</span>
+<span class="cm">// До Java 7: substring розділяв char[], тримав посилання на великий масив</span>
+<span class="cm">// Java 7+: substring копіює → OK</span></code></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> String immutable (thread-safe, hashCode стабільний, pool), == порівнює посилання а не вміст, StringBuilder для циклічної конкатенації, Compact Strings з Java 9 (1 байт для Latin-1).
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

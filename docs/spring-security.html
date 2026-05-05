@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring Security: filter chain, JWT, @PreAuthorize</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--purple:#a78bf6;--purple-bg:rgba(167,139,246,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--red);background:var(--red-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--red)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-red{background:var(--red-bg);color:var(--red)}.tag-green{background:var(--green-bg);color:var(--green)}.tag-teal{background:var(--teal-bg);color:var(--teal)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.25rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.code{font-family:var(--font-mono);font-size:12.5px;background:#111318;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin:.75rem 0;line-height:1.8;white-space:pre;overflow-x:auto;color:#c9cdd8}
+.kw{color:#7eb8f7}.cm{color:#4e5466;font-style:italic}.str{color:#7dcf8e}.num{color:#f0a843}.cls{color:#e8b86d}.ann{color:#a78bf6}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Spring Security: filter chain, JWT</h1>
+  <span class="header-tag">Spring Security</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Архітектура</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Filter chain і SecurityContext</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>SecurityFilterChain конфігурація</div>
+    <div class="sidebar-section">JWT</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>JWT структура і flow</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>JwtAuthFilter реалізація</div>
+    <div class="sidebar-section">Авторизація</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>@PreAuthorize і Method Security</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>UserDetailsService</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>CSRF, CORS і антипатерни</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-red">архітектура</span>
+        <h2>Filter chain і SecurityContext</h2>
+        <p>Spring Security — ланцюжок Servlet Filters. Кожен запит проходить через фільтри по порядку. <code>SecurityContextHolder</code> зберігає аутентифікацію поточного потоку (ThreadLocal).</p>
+        <div class="code"><span class="cm">// Порядок ключових фільтрів:</span>
+<span class="cm">// 1. SecurityContextHolderFilter</span>
+<span class="cm">// 2. UsernamePasswordAuthenticationFilter (form login)</span>
+<span class="cm">// 3. BearerTokenAuthenticationFilter (OAuth2)</span>
+<span class="cm">// 4. JwtAuthenticationFilter (кастомний)</span>
+<span class="cm">// 5. ExceptionTranslationFilter → 401/403</span>
+<span class="cm">// 6. AuthorizationFilter (доступ до endpoint)</span>
+
+<span class="cm">// SecurityContext — де зберігається аутентифікований user</span>
+<span class="cls">Authentication</span> auth =
+    <span class="cls">SecurityContextHolder</span>.getContext().getAuthentication();
+<span class="cls">String</span> username = auth.getName();
+<span class="cls">Collection</span>&lt;?&gt; authorities = auth.getAuthorities();
+
+<span class="cm">// У контролері:</span>
+<span class="ann">@GetMapping</span>(<span class="str">"/me"</span>)
+<span class="kw">public</span> <span class="cls">UserDto</span> me(<span class="ann">@AuthenticationPrincipal</span> <span class="cls">UserDetails</span> user) {
+    <span class="kw">return</span> mapper.toDto(user);
+}</code></div>
+      </div>
+    </div>
+
+    <!-- 1 -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-red">конфігурація</span>
+        <h2>SecurityFilterChain — Spring Boot 3</h2>
+        <div class="code"><span class="ann">@Configuration</span>
+<span class="ann">@EnableWebSecurity</span>
+<span class="ann">@EnableMethodSecurity</span>
+<span class="kw">public class</span> <span class="cls">SecurityConfig</span> {
+
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> <span class="cls">SecurityFilterChain</span> filterChain(<span class="cls">HttpSecurity</span> http,
+            <span class="cls">JwtAuthFilter</span> jwtFilter) <span class="kw">throws</span> <span class="cls">Exception</span> {
+        <span class="kw">return</span> http
+            .csrf(<span class="cls">AbstractHttpConfigurer</span>::disable)   <span class="cm">// stateless API</span>
+            .sessionManagement(s -> s
+                .sessionCreationPolicy(<span class="cls">SessionCreationPolicy</span>.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(<span class="str">"/api/auth/**"</span>).permitAll()
+                .requestMatchers(<span class="str">"/actuator/health"</span>).permitAll()
+                .anyRequest().authenticated())
+            .addFilterBefore(jwtFilter,
+                <span class="cls">UsernamePasswordAuthenticationFilter</span>.<span class="kw">class</span>)
+            .build();
+    }
+
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> <span class="cls">PasswordEncoder</span> passwordEncoder() {
+        <span class="kw">return new</span> <span class="cls">BCryptPasswordEncoder</span>();
+    }
+}</code></div>
+      </div>
+    </div>
+
+    <!-- 2: JWT -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-teal">JWT</span>
+        <h2>JWT структура і flow</h2>
+        <div class="code"><span class="cm">// JWT = header.payload.signature (base64url encoded)</span>
+<span class="cm">// Header: {"alg":"HS256","typ":"JWT"}</span>
+<span class="cm">// Payload (claims):</span>
+{
+  "sub": "user123",          <span class="cm">// subject</span>
+  "iat": 1705315200,         <span class="cm">// issued at</span>
+  "exp": 1705318800,         <span class="cm">// expiration</span>
+  "roles": ["ROLE_USER"],
+  "userId": 42
+}
+<span class="cm">// Signature: HMACSHA256(base64(header)+"."+base64(payload), secret)</span>
+
+<span class="cm">// Flow:</span>
+<span class="cm">// 1. POST /auth/login {username, password}</span>
+<span class="cm">// 2. Server validates → returns {accessToken, refreshToken}</span>
+<span class="cm">// 3. Client: Authorization: Bearer &lt;accessToken&gt;</span>
+<span class="cm">// 4. Server: verify signature → extract user → process request</span>
+
+<span class="cm">// Access token: короткий TTL (15 хв)</span>
+<span class="cm">// Refresh token: довгий TTL (7 днів), зберігається в DB</span></code></div>
+        <div class="callout callout-warn">
+          JWT payload не зашифрований — тільки підписаний. Не зберігай sensitive дані (password, credit card) в claims. Будь-хто може decode base64 і прочитати payload.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3: JwtAuthFilter -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-teal">JWT filter</span>
+        <h2>JwtAuthFilter реалізація</h2>
+        <div class="code"><span class="ann">@Component</span>
+<span class="kw">public class</span> <span class="cls">JwtAuthFilter</span> <span class="kw">extends</span> <span class="cls">OncePerRequestFilter</span> {
+
+    <span class="ann">@Autowired</span> <span class="cls">JwtService</span> jwtService;
+    <span class="ann">@Autowired</span> <span class="cls">UserDetailsService</span> userDetailsService;
+
+    <span class="ann">@Override</span>
+    <span class="kw">protected void</span> doFilterInternal(<span class="cls">HttpServletRequest</span> req,
+            <span class="cls">HttpServletResponse</span> res, <span class="cls">FilterChain</span> chain)
+            <span class="kw">throws</span> <span class="cls">ServletException</span>, <span class="cls">IOException</span> {
+
+        <span class="kw">var</span> header = req.getHeader(<span class="str">"Authorization"</span>);
+        <span class="kw">if</span> (header == <span class="kw">null</span> || !header.startsWith(<span class="str">"Bearer "</span>)) {
+            chain.doFilter(req, res); <span class="kw">return</span>;
+        }
+
+        <span class="kw">var</span> token = header.substring(<span class="num">7</span>);
+        <span class="kw">var</span> username = jwtService.extractUsername(token);
+
+        <span class="kw">if</span> (username != <span class="kw">null</span> &&
+                <span class="cls">SecurityContextHolder</span>.getContext().getAuthentication() == <span class="kw">null</span>) {
+            <span class="kw">var</span> user = userDetailsService.loadUserByUsername(username);
+            <span class="kw">if</span> (jwtService.isValid(token, user)) {
+                <span class="kw">var</span> auth = <span class="kw">new</span> <span class="cls">UsernamePasswordAuthenticationToken</span>(
+                    user, <span class="kw">null</span>, user.getAuthorities());
+                auth.setDetails(<span class="kw">new</span> <span class="cls">WebAuthenticationDetailsSource</span>()
+                    .buildDetails(req));
+                <span class="cls">SecurityContextHolder</span>.getContext().setAuthentication(auth);
+            }
+        }
+        chain.doFilter(req, res);
+    }
+}</code></div>
+      </div>
+    </div>
+
+    <!-- 4: @PreAuthorize -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-green">авторизація</span>
+        <h2>@PreAuthorize і Method Security</h2>
+        <div class="code"><span class="cm">// Потребує @EnableMethodSecurity в конфігурації</span>
+
+<span class="cm">// Перевірка ролі</span>
+<span class="ann">@PreAuthorize</span>(<span class="str">"hasRole('ADMIN')"</span>)
+<span class="kw">public void</span> deleteUser(<span class="kw">long</span> id) { ... }
+
+<span class="cm">// Перевірка authority (без префіксу ROLE_)</span>
+<span class="ann">@PreAuthorize</span>(<span class="str">"hasAuthority('route:write')"</span>)
+<span class="kw">public</span> <span class="cls">Route</span> createRoute(<span class="cls">RouteRequest</span> req) { ... }
+
+<span class="cm">// SpEL: перевірка параметрів</span>
+<span class="ann">@PreAuthorize</span>(<span class="str">"#userId == authentication.principal.id"</span>)
+<span class="kw">public</span> <span class="cls">UserDto</span> getUser(<span class="kw">long</span> userId) { ... }
+
+<span class="cm">// PostAuthorize: перевірка результату</span>
+<span class="ann">@PostAuthorize</span>(<span class="str">"returnObject.ownerId == authentication.principal.id"</span>)
+<span class="kw">public</span> <span class="cls">Route</span> getRoute(<span class="kw">long</span> id) { ... }
+
+<span class="cm">// Кілька умов</span>
+<span class="ann">@PreAuthorize</span>(<span class="str">"hasRole('ADMIN') or #userId == authentication.principal.id"</span>)
+<span class="kw">public void</span> updateUser(<span class="kw">long</span> userId, <span class="cls">UserDto</span> dto) { ... }</code></div>
+        <div class="callout callout-warn">
+          @PreAuthorize — AOP proxy. Self-invocation пастка діє і тут. Виклик методу з <code>this</code> обійде перевірку.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: UserDetailsService -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-blue">UserDetails</span>
+        <h2>UserDetailsService</h2>
+        <div class="code"><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">AppUserDetailsService</span> <span class="kw">implements</span> <span class="cls">UserDetailsService</span> {
+
+    <span class="ann">@Autowired</span> <span class="cls">UserRepository</span> userRepo;
+
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> <span class="cls">UserDetails</span> loadUserByUsername(<span class="cls">String</span> username)
+            <span class="kw">throws</span> <span class="cls">UsernameNotFoundException</span> {
+        <span class="kw">return</span> userRepo.findByEmail(username)
+            .map(user -> <span class="cls">User</span>.builder()
+                .username(user.getEmail())
+                .password(user.getPasswordHash())
+                .roles(user.getRoles().toArray(<span class="kw">new</span> <span class="cls">String</span>[<span class="num">0</span>]))
+                .build())
+            .orElseThrow(() -> <span class="kw">new</span> <span class="cls">UsernameNotFoundException</span>(username));
+    }
+}
+
+<span class="cm">// GrantedAuthority: "ROLE_USER", "ROLE_ADMIN"</span>
+<span class="cm">// hasRole("USER") шукає "ROLE_USER" автоматично</span>
+<span class="cm">// hasAuthority("route:write") шукає точну назву</span></code></div>
+      </div>
+    </div>
+
+    <!-- 6: CSRF, CORS -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-amber">CSRF, CORS</span>
+        <h2>CSRF, CORS і антипатерни</h2>
+        <h3>CSRF</h3>
+        <div class="code"><span class="cm">// CSRF захист: потрібен для stateful (session-based) API</span>
+<span class="cm">// Для stateless JWT API: вимикають</span>
+http.csrf(AbstractHttpConfigurer::disable)
+<span class="cm">// Причина: CSRF атака використовує сесійні cookies</span>
+<span class="cm">// JWT в Authorization header не надсилається браузером автоматично</span></code></div>
+        <hr class="sep">
+        <h3>CORS</h3>
+        <div class="code"><span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">CorsConfigurationSource</span> corsConfigurationSource() {
+    <span class="kw">var</span> config = <span class="kw">new</span> <span class="cls">CorsConfiguration</span>();
+    config.setAllowedOrigins(<span class="cls">List</span>.of(<span class="str">"https://myapp.com"</span>));
+    config.setAllowedMethods(<span class="cls">List</span>.of(<span class="str">"GET"</span>, <span class="str">"POST"</span>, <span class="str">"PUT"</span>, <span class="str">"DELETE"</span>));
+    config.setAllowedHeaders(<span class="cls">List</span>.of(<span class="str">"Authorization"</span>, <span class="str">"Content-Type"</span>));
+    config.setAllowCredentials(<span class="kw">true</span>);
+    <span class="kw">var</span> source = <span class="kw">new</span> <span class="cls">UrlBasedCorsConfigurationSource</span>();
+    source.registerCorsConfiguration(<span class="str">"/**"</span>, config);
+    <span class="kw">return</span> source;
+}
+
+<span class="cm">// НІКОЛИ в продакшн:</span>
+config.setAllowedOrigins(<span class="cls">List</span>.of(<span class="str">"*"</span>));     <span class="cm">// всі origins</span>
+config.setAllowCredentials(<span class="kw">true</span>);             <span class="cm">// з * — помилка!</span></code></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          <strong>На співбесіді:</strong> SecurityFilterChain — ordered filters, JWT stateless (відключаємо session + CSRF), @PreAuthorize = SpEL над методом (AOP proxy), UserDetailsService завантажує user з DB, 401=не аутентифікований, 403=немає прав.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>

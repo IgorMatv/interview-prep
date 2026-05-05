@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salary negotiation — Java ринок</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2026;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8e9ec;--muted:#7a7d87;--hint:#4a4d57;--blue:#5b9cf6;--blue-bg:rgba(91,156,246,0.1);--green:#4eca8b;--green-bg:rgba(78,202,139,0.1);--amber:#f0a843;--amber-bg:rgba(240,168,67,0.1);--red:#f05a5a;--red-bg:rgba(240,90,90,0.1);--teal:#3ecfcf;--teal-bg:rgba(62,207,207,0.1);--font-body:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--radius-sm:6px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:1.5rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(12px)}
+.header-back{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}.header-back:hover{color:var(--text)}
+.header-divider{color:var(--hint);font-size:13px}
+.header h1{font-size:15px;font-weight:500}
+.header-tag{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+.layout{display:flex;min-height:calc(100vh - 61px)}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);padding:0 1.25rem .5rem;margin-top:.5rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:.55rem 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--text);border-left-color:var(--green);background:var(--green-bg)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--hint);flex-shrink:0;transition:background .12s}
+.nav-item.active .nav-dot{background:var(--green)}
+.content{flex:1;padding:2rem 2.5rem;max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem}
+.tag{display:inline-block;font-size:11px;font-family:var(--font-mono);padding:2px 9px;border-radius:20px;margin-bottom:.6rem;font-weight:500}
+.tag-green{background:var(--green-bg);color:var(--green)}.tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-teal{background:var(--teal-bg);color:var(--teal)}.tag-blue{background:var(--blue-bg);color:var(--blue)}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+p,li{font-size:13.5px;color:#9ea3b0;line-height:1.7}
+ul{padding-left:1.1rem;margin-top:.3rem}li{margin-bottom:.4rem}
+strong{color:var(--text);font-weight:500}
+code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.sep{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.callout{border-radius:var(--radius-sm);padding:.7rem 1rem;margin-top:.75rem;font-size:13px;line-height:1.6}
+.callout-warn{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8904a}
+.callout-ok{background:var(--green-bg);border-left:3px solid var(--green);color:#4ab87a}
+.callout-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#5b9cf6}
+.callout strong{color:inherit}
+.salary-row{display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border)}
+.salary-row:last-child{border-bottom:none}
+.salary-role{font-size:13px;color:var(--text)}
+.salary-range{font-family:var(--font-mono);font-size:12.5px;color:var(--green)}
+.salary-note{font-size:11px;color:var(--muted);margin-top:1px}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="index.html" class="header-back">← назад</a>
+  <span class="header-divider">/</span>
+  <h1>Salary negotiation</h1>
+  <span class="header-tag">Career</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Ринок</div>
+    <div class="nav-item active" onclick="go(0)"><span class="nav-dot"></span>Орієнтири Java ринку</div>
+    <div class="nav-item" onclick="go(1)"><span class="nav-dot"></span>Де шукати дані</div>
+    <div class="sidebar-section">Переговори</div>
+    <div class="nav-item" onclick="go(2)"><span class="nav-dot"></span>Коли і як називати суму</div>
+    <div class="nav-item" onclick="go(3)"><span class="nav-dot"></span>Типові питання HR</div>
+    <div class="nav-item" onclick="go(4)"><span class="nav-dot"></span>Counter offer тактика</div>
+    <div class="nav-item" onclick="go(5)"><span class="nav-dot"></span>Повний пакет (total comp)</div>
+    <div class="nav-item" onclick="go(6)"><span class="nav-dot"></span>Для European remote</div>
+  </nav>
+  <main class="content">
+
+    <!-- 0 -->
+    <div class="screen on" id="s0">
+      <div class="card">
+        <span class="tag tag-green">ринок</span>
+        <h2>Орієнтири Java ринку (2024–2025)</h2>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Ціни вказані в USD/місяць gross (до податків). Дані приблизні і залежать від компанії, локації, стеку. Для актуальних даних — перевіряй джерела нижче.</p>
+        <h3 style="margin-bottom:.5rem">🇺🇦 Українські компанії (remote)</h3>
+        <div class="salary-row"><span class="salary-role">Junior Java</span><span class="salary-range">$800–$1500</span></div>
+        <div class="salary-row"><span class="salary-role">Middle Java</span><span class="salary-range">$2000–$3500</span></div>
+        <div class="salary-row"><span class="salary-role">Senior Java</span><span class="salary-range">$4000–$6000</span></div>
+        <div class="salary-row"><span class="salary-role">Lead / Staff</span><span class="salary-range">$6000–$10000+</span></div>
+        <hr class="sep">
+        <h3 style="margin-bottom:.5rem">🇪🇺 European remote компанії (GMT timezone)</h3>
+        <div class="salary-row"><span class="salary-role">Middle Java</span><span class="salary-range">€3500–€6000/міс</span></div>
+        <div class="salary-row"><span class="salary-role">Senior Java</span><span class="salary-range">€6000–€10000/міс</span></div>
+        <div class="callout callout-info" style="margin-top:.75rem">
+          Ці цифри — орієнтири, не гарантія. Ринок змінюється. Компанія зі стартап-стеком може платити менше, великий enterprise fintech — більше. Дивись на <strong>конкретні оголошення</strong>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 1 -->
+    <div class="screen" id="s1">
+      <div class="card">
+        <span class="tag tag-teal">джерела</span>
+        <h2>Де шукати актуальні дані</h2>
+        <ul>
+          <li><strong>DOU.ua — Зарплатний калькулятор</strong> — найкраще джерело для UA ринку. Щорічне опитування тисяч розробників, фільтр по технології, роль, досвід.</li>
+          <li><strong>levels.fyi</strong> — компенсації в великих tech компаніях. Переважно US, але є EUR.</li>
+          <li><strong>Glassdoor / LinkedIn Salary</strong> — середній ринок. Корисно для конкретних компаній.</li>
+          <li><strong>Djinni.co</strong> — UA платформа. Більшість вакансій з зарплатою прямо в описі.</li>
+          <li><strong>Relocate.me</strong> — EU вакансії з релокацією і salary range.</li>
+          <li><strong>LinkedIn / Twitter спільноти</strong> — анонімні salary threads регулярно.</li>
+        </ul>
+        <div class="callout callout-ok">
+          <strong>Найкраща тактика:</strong> застосуйся на 10-15 позицій, пройди до стадії offer хоча б в 2-3 місцях. Конкуруючі офери — найпотужніший важіль переговорів.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="screen" id="s2">
+      <div class="card">
+        <span class="tag tag-green">тактика</span>
+        <h2>Коли і як називати суму</h2>
+        <h3>Не називай першим</h3>
+        <p>Хто називає першим — програє anchor. Якщо HR питає "які ваші очікування?" до того як ти знаєш бюджет компанії:</p>
+        <ul>
+          <li>"A what's the budget for this role?" — відповідь питанням</li>
+          <li>"I'm flexible and looking at the full package, could you share the range?" — дипломатично</li>
+          <li>Якщо тиснуть — назви range, верхня межа якого = твоє бажане</li>
+        </ul>
+        <hr class="sep">
+        <h3>Як обрати число</h3>
+        <ul>
+          <li>Зроби ресерч (DOU, Djinni) — знай ринковий range</li>
+          <li>Назви <strong>на 15-20% вище</strong> ніж реально хочеш — залишає місце для переговорів</li>
+          <li>Назви конкретне число, не range: "$4500" краще ніж "$4000-$5000" (торгуються до нижньої межі)</li>
+          <li>Обґрунтуй: "Виходячи з ринку і мого досвіду з Spring Boot і Kafka..."</li>
+        </ul>
+        <div class="callout callout-warn">
+          Якщо компанія питає <em>поточну</em> зарплату — в багатьох країнах ЄС це заборонено. У будь-якому разі — не обов'язково відповідати. "Я не ділюся поточною компенсацією, але можу сказати мої очікування."
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="screen" id="s3">
+      <div class="card">
+        <span class="tag tag-amber">типові питання</span>
+        <h2>Типові HR питання і відповіді</h2>
+        <div style="margin-bottom:.75rem">
+          <p><strong>Q: "Чому ви йдете з поточного місця?"</strong></p>
+          <p>Ніколи не кажи погане про роботодавця. "Я шукаю нові технічні виклики і хочу розвиватись у напрямку [X]." Або: "Поточна роль досягла своєї стелі, хочу рости далі."</p>
+        </div>
+        <div class="sep"></div>
+        <div style="margin-bottom:.75rem">
+          <p><strong>Q: "Чи є у вас інші офери?"</strong></p>
+          <p>Якщо є — кажи. Це leverage. "Так, я розглядаю кілька позицій, але ваша компанія мені найбільш цікава через [конкретна причина]."</p>
+        </div>
+        <div class="sep"></div>
+        <div>
+          <p><strong>Q: "Коли ви готові вийти?"</strong></p>
+          <p>Не погоджуйся відразу. "Мені потрібно повідомити поточного роботодавця, стандартно це 2 тижні. Але я готовий обговорити якщо терміново."</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 -->
+    <div class="screen" id="s4">
+      <div class="card">
+        <span class="tag tag-green">counter offer</span>
+        <h2>Counter offer тактика</h2>
+        <p>Отримав offer — не погоджуйся одразу навіть якщо подобається. Майже завжди є простір для переговорів.</p>
+        <ul>
+          <li><strong>Не відповідай одразу.</strong> "Дякую за offer! Можу я взяти 48 годин щоб все обдумати?" — завжди OK.</li>
+          <li><strong>Завжди намагайся підвищити.</strong> Worst case — скажуть ні. Кандидатів не відкликають через counter offer.</li>
+          <li><strong>Counter з обґрунтуванням.</strong> "Виходячи з ринкових даних і мого досвіду з [X], я розраховував на [$Y]. Чи є можливість переглянути?"</li>
+          <li><strong>Якщо є competing offer</strong> — використай. "Я маю offer від іншої компанії на $X, ваша позиція мені більш цікава, чи можете ви matched?"</li>
+        </ul>
+        <div class="callout callout-ok">
+          Статистика: ~70% кандидатів що робили counter offer отримали підвищення або покращені умови. Більшість просто не питають.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 -->
+    <div class="screen" id="s5">
+      <div class="card">
+        <span class="tag tag-teal">total comp</span>
+        <h2>Повний пакет — що враховувати</h2>
+        <p>Зарплата — не єдине. Total compensation може сильно відрізнятися.</p>
+        <ul>
+          <li><strong>Базова зарплата</strong> — основа</li>
+          <li><strong>Бонус</strong> — річний performance bonus (5-20% від зарплати)</li>
+          <li><strong>Equity / RSU / ESOP</strong> — акції компанії (важливо для стартапів і публічних компаній)</li>
+          <li><strong>Медична страховка</strong> — для EU компаній часто включена</li>
+          <li><strong>Навчальний бюджет</strong> — конференції, курси, книги ($1-3K/рік)</li>
+          <li><strong>Hardware</strong> — MacBook vs BYOD</li>
+          <li><strong>Flexible hours / Remote</strong> — вартість для якості life</li>
+          <li><strong>Vacation days</strong> — EU standard 20-25 днів vs UA 15-18</li>
+          <li><strong>Visa sponsorship</strong> — якщо плануєш релокацію</li>
+        </ul>
+        <div class="callout callout-info">
+          Для стартапів: equity може бути значною частиною comp. Питай: vesting schedule (4 роки + 1 рік cliff стандарт), strike price, preferred vs common shares, останній раунд valuation.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 -->
+    <div class="screen" id="s6">
+      <div class="card">
+        <span class="tag tag-blue">EU remote</span>
+        <h2>Для European remote позицій</h2>
+        <ul>
+          <li><strong>Timezone overlap</strong> — більшість EU компаній вимагають CET±2 (Україна = CET+1 зараз)</li>
+          <li><strong>Contract type</strong> — B2B (ФОП) vs employment. B2B зазвичай більше але немає соціальних гарантій</li>
+          <li><strong>Currency</strong> — EUR/GBP офери краще ніж USD при поточних курсах для UAH</li>
+          <li><strong>Trial period</strong> — 1-3 місяці стандартно. Запитай умови достострокового припинення</li>
+          <li><strong>Salary review</strong> — коли і як часто. "Annual review" стандартно</li>
+        </ul>
+        <hr class="sep">
+        <h3>Як знаходити EU remote</h3>
+        <ul>
+          <li><strong>Relocate.me</strong> — фільтр "remote" + "Europe"</li>
+          <li><strong>Remote.io / We Work Remotely</strong> — глобальний remote</li>
+          <li><strong>LinkedIn</strong> — "Java Developer", location "Europe", "Remote"</li>
+          <li><strong>Djinni.co</strong> — є EU компанії що наймають з України</li>
+          <li><strong>Outstaff/outsource агенції</strong> — EPAM, GlobalLogic, Luxoft мають EU проекти</li>
+        </ul>
+        <div class="callout callout-ok">
+          <strong>Ключова порада:</strong> подавайся навіть якщо не відповідаєш 100% вимогам. Дослідження показують — чоловіки подаються при 60% відповідності, жінки — при 100%. Target: 70%+ match.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+const screens=document.querySelectorAll('.screen');
+const items=document.querySelectorAll('.nav-item');
+function go(i){screens.forEach((s,idx)=>s.classList.toggle('on',idx===i));items.forEach((it,idx)=>it.classList.toggle('active',idx===i))}
+</script>
+</body>
+</html>
